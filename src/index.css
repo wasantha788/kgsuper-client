@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  /* This tells Tailwind to generate classes like bg-primary and text-primary */
+  --color-primary: #4FBF67;
+  --color-primary-dull: #3DAE55;
+}
+
+body {
+  font-family: "Outfit", sans-serif;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
