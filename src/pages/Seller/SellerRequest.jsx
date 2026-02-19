@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Package, MapPin, RefreshCcw, X, Search } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-import noImage from "../../assets/27002.png";
+import noImage from "../../assets/assets";
 
 export default function SellerRequest() {
   const [products, setProducts] = useState([]);
