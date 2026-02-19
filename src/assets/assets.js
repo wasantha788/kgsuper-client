@@ -75,7 +75,7 @@ import barley_image from "./barley_image.png";
 import sellerAdpng from "./Add.png";
 import homeIconUrl from "./home.png";
 import deliveryIconUrl from "./delivery.png";
-import noImage from "../assets/27002.jpg";
+import noImage from "./27002.jpg";
 
 
 
