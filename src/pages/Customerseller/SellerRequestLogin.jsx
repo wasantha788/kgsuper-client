@@ -14,7 +14,7 @@ export default function SellerRequestLogin() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/sellerrequestlogin",
+        "https://kgsuper-server-production.up.railway.app/api/sellerrequestlogin",
         form
       );
       toast.success(res.data.message || "Login successful");
