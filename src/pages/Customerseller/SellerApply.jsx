@@ -147,7 +147,7 @@ function AdminRequestTable() {
                         <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border border-slate-200 shadow-inner">
                           <img 
                             // FIX: Correctly formats paths for browser display
-                            src={`http://localhost:4000/${req.images[0]?.replace(/\\/g, '/')}`} 
+                            src={`/${req.images[0]?.replace(/\\/g, '/')}`} 
                             alt="" 
                             className="w-full h-full object-cover"
                             onError={(e) => { e.target.src = "https://via.placeholder.com/100?text=No+Image" }}
@@ -237,7 +237,7 @@ function SellerAddProduct() {
 
     try {
       // Matches router.post("/products")
-      await axios.post("http://localhost:4000/api/sellerRequest/products", formData);
+      await axios.post("https://kgsuper-server-production.up.railway.app/api/sellerRequest/products", formData);
       toast.success("Submission Sent for Approval!");
       
       // Reset form
