@@ -92,8 +92,8 @@ const SellerDashboard = () => {
 
     try {
       const [ordersRes, leadersRes] = await Promise.all([
-        axios.get("http://localhost:4000/api/seller/orders"),
-        axios.get("http://localhost:4000/api/seller/top-delivery-boys"),
+        axios.get("https://kgsuper-server-production.up.railway.app/api/seller/orders"),
+        axios.get("https://kgsuper-server-production.up.railway.app/api/seller/top-delivery-boys"),
       ]);
 
       setOrders(ordersRes?.data?.data || []);
