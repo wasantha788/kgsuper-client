@@ -3,12 +3,12 @@ import { useAppContext } from "../../context/AppContext";
 import { io } from "socket.io-client";
 
 const DeliveryOrders = () => {
-  const { axios, user } = useAppContext();
+  const { axios, user } = useAppContext()
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const socket = io("http://localhost:4000", { transports: ["websocket"] });
+    const socket = io("https://kgsuper-server-production.up.railway.app", { transports: ["websocket"] });
     socket.emit("registerDeliveryBoy", user._id);
 
     // Fetch initial orders
