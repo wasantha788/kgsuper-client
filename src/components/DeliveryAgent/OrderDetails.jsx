@@ -23,7 +23,7 @@ const DeliveryOrderDetails = () => {
     const fetchOrder = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:4000/api/delivery/${id}`
+          `https://kgsuper-server-production.up.railway.app/api/delivery/${id}`
         );
         if (res.data?.order) {
           setOrder(res.data.order);
