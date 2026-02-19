@@ -62,7 +62,7 @@ function AdminRequestTable() {
     setLoading(true);
     try {
       // FIX: Matches router.get("/") in your backend
-      const { data } = await axios.get("http://localhost:4000/api/sellerRequest");
+      const { data } = await axios.get("https://kgsuper-server-production.up.railway.app/api/sellerRequest");
       
       // Safety check for backend response structure { success: true, products: [] }
       if (data && data.success) {
