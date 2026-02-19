@@ -85,7 +85,7 @@ function AdminRequestTable() {
   const handleStatusUpdate = async (id, status) => {
     try {
       // FIX: Matches router.patch("/update-status/:id") in your backend
-      const response = await axios.patch(`http://localhost:4000/api/sellerRequest/update-status/${id}`, { status });
+      const response = await axios.patch(`https://kgsuper-server-production.up.railway.app/api/sellerRequest/update-status/${id}`, { status });
       
       if (response.data.success) {
         toast.success(`Product ${status} successfully!`);
