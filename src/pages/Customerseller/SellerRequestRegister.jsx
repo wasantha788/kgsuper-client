@@ -13,7 +13,7 @@ export default function SellerRequestRegister() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:4000/api/sellerrequestusers", form);
+      const res = await axios.post("https://kgsuper-server-production.up.railway.app/api/sellerrequestusers", form);
       toast.success(res.data.message || "Registration successful!");
       navigate("/seller-request/login");
     } catch (err) {
