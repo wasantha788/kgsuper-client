@@ -305,7 +305,7 @@ const Orders = () => {
               </div>
 
 
-              <div className="flex flex-col md:items-end gap-3 min-w-[200px]">
+              <div className="flex flex-col md:items-end gap-3 min-w-50">
                 <p className="text-xl font-bold">{currency}{order.amount.toFixed(2)}</p>
                 <select value={order.status} disabled={order.status === "Cancelled" || processingOrders.includes(order._id)} className={`w-full border rounded px-3 py-1 font-bold ${statusColor(order.status)}`} onChange={(e) => updateStatus(order._id, e.target.value)}>
                   {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
