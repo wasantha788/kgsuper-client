@@ -77,25 +77,25 @@ const Orders = () => {
   };
 
   // ---------------- SEND EMAIL RECEIPT ----------------
-  const sendEmailReceipt = async (order) => {
-    if (!order.address?.email) {
-      toast.error("No customer email found for this order.");
-      return;
-    }
-    setSendingEmail(order._id);
-    try {
-      const { data } = await axios.post(
-        "/api/order/send-receipt",
-        { email: order.address.email, orderDetails: order },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (data.success) toast.success("Receipt sent to customer email!");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to send email");
-    } finally {
-      setSendingEmail(null);
-    }
-  };
+ const sendEmailReceipt = async (order) => {
+  if (!order.address?.email) {
+    toast.error("No customer email found for this order.");
+    return;
+  }
+  setSendingEmail(order._id);
+  try {
+    const { data } = await axios.post(
+      "/api/order/send-receipt",
+      { email: order.address.email, orderDetails: order },
+      { withCredentials: true } 
+    );
+    if (data.success) toast.success("Receipt sent to customer email!");
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Failed to send email");
+  } finally {
+    setSendingEmail(null);
+  }
+};
 
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
