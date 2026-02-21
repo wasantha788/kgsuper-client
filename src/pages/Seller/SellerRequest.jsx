@@ -4,7 +4,6 @@ import { Package, MapPin, RefreshCcw, X, Search } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import noImage from "../../assets/27002.jpg";
 
-
 export default function SellerRequest() {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -15,24 +14,22 @@ export default function SellerRequest() {
 
   const API_URL = "https://kgsuper-server-production.up.railway.app";
 
-  /* ---------------- FETCH ---------------- */
+  // --- Fetch all seller requests ---
   const fetchAllRequests = async () => {
     try {
       setLoading(true);
       const { data } = await axios.get(`${API_URL}/api/sellerRequest`);
-
       if (data.success) {
         const normalized = (data.products || []).map((p) => ({
           ...p,
           _id: typeof p._id === "object" ? p._id.$oid : p._id,
         }));
-
         setProducts(normalized);
         setFilteredProducts(normalized);
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch products.");
+      toast.error("Failed to fetch products. Is your backend running?");
     } finally {
       setLoading(false);
     }
@@ -42,20 +39,20 @@ export default function SellerRequest() {
     fetchAllRequests();
   }, []);
 
-  /* ---------------- SEARCH FILTER ---------------- */
+  // --- Filter products by search term ---
   useEffect(() => {
-    const results = products.filter((product) =>
-      `${product.name} ${product.sellerName} ${product.sellerEmail}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+    const results = products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.sellerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.sellerEmail?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredProducts(results);
   }, [searchTerm, products]);
 
-  /* ---------------- DELETE ---------------- */
+  // --- Delete a product ---
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this product?")) return;
-
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
       await axios.delete(`${API_URL}/api/sellerRequest/${id}`);
       setProducts((prev) => prev.filter((p) => p._id !== id));
@@ -64,70 +61,62 @@ export default function SellerRequest() {
       toast.success("Deleted successfully!");
     } catch (err) {
       console.error(err);
-      toast.error("Delete failed.");
+      toast.error("Failed to delete product.");
     }
   };
 
-  /* ---------------- STATUS UPDATE ---------------- */
+  // --- Update product status & notify email sent ---
   const handleChangeStatus = async (id, status) => {
+    const validStatuses = ["approved", "rejected"];
+    if (!validStatuses.includes(status)) {
+      toast.error("Invalid status");
+      return;
+    }
+
     try {
-      const { data } = await axios.patch(
-        `${API_URL}/api/sellerRequest/update-status/${id}`,
-        { status }
-      );
+      const { data } = await axios.patch(`${API_URL}/api/sellerRequest/update-status/${id}`, { status });
 
       if (data.success) {
-        setProducts((prev) =>
-          prev.map((p) => (p._id === id ? { ...p, status } : p))
-        );
+        setProducts((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
+        setFilteredProducts((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
+        if (selectedProduct?._id === id) setSelectedProduct({ ...selectedProduct, status });
 
-        setFilteredProducts((prev) =>
-          prev.map((p) => (p._id === id ? { ...p, status } : p))
-        );
-
-        if (selectedProduct?._id === id)
-          setSelectedProduct({ ...selectedProduct, status });
-
-        toast.success(`Status updated to ${status}`);
+        toast.success(`Status changed to ${status} & email sent to seller`);
+      } else {
+        toast.error(data.message || "Failed to update status");
       }
     } catch (err) {
       console.error(err);
-      toast.error("Status update failed.");
+      toast.error("Failed to update status or send email");
     }
   };
 
-  /* ---------------- LOADING SCREEN ---------------- */
-  if (loading) {
+  if (loading)
     return (
       <div className="flex flex-col justify-center items-center min-h-screen bg-white">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-500 mb-4"></div>
-        <p className="text-gray-400 text-sm animate-pulse">
-          Fetching all requests...
-        </p>
+        <p className="text-gray-400 text-sm animate-pulse">Fetching all requests...</p>
       </div>
     );
-  }
 
-  /* ---------------- COMPONENT ---------------- */
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
+    <div className="min-h-screen bg-[#f8fafc] relative">
       <Toaster position="top-right" />
 
-      {/* ================= MODAL ================= */}
+      {/* PRODUCT DETAILS MODAL */}
       {selectedProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
-
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-3xl overflow-y-auto shadow-2xl relative">
             <button
               onClick={() => setSelectedProduct(null)}
-              className="absolute top-4 right-4 bg-white p-2 rounded-full shadow hover:text-red-600"
+              className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-lg hover:text-red-600"
             >
               <X className="w-6 h-6" />
             </button>
 
-            <div className="flex flex-col lg:flex-row gap-4 p-6">
-
+            <div className="flex flex-col lg:flex-row gap-4 p-4">
               {/* Images */}
+                   {/* Images */}
               <div className="lg:w-1/2 flex flex-col gap-3">
                 {selectedProduct.images?.length ? (
                   selectedProduct.images.map((img, i) => {
@@ -153,120 +142,184 @@ export default function SellerRequest() {
               </div>
 
               {/* Details */}
-              <div className="lg:w-1/2 space-y-4">
-                <h2 className="text-3xl font-black capitalize">
-                  {selectedProduct.name}
-                </h2>
+              <div className="lg:w-1/2 p-6 flex flex-col gap-4">
+                <h2 className="text-3xl font-black text-gray-900 capitalize">{selectedProduct.name}</h2>
+                <p className="text-2xl font-bold text-emerald-600">LKR {selectedProduct.price.toLocaleString()}</p>
+                <p className="text-gray-600 bg-gray-50 p-4 rounded-xl italic">{selectedProduct.description}</p>
 
-                <p className="text-2xl font-bold text-emerald-600">
-                  LKR {Number(selectedProduct.price || 0).toLocaleString()}
-                </p>
-
-                <p className="text-gray-600 bg-gray-50 p-4 rounded-xl italic">
-                  {selectedProduct.description || "No description"}
-                </p>
-
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <Info label="Category" value={selectedProduct.category} />
-                  <Info label="Quantity" value={selectedProduct.quantity} />
-                  <Info label="Weight" value={selectedProduct.weight} />
-                  <Info label="Status" value={selectedProduct.status} />
-                </div>
-
-                {selectedProduct.status === "pending" && (
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() =>
-                        handleChangeStatus(selectedProduct._id, "approved")
-                      }
-                      className="flex-1 bg-emerald-600 text-white py-2 rounded-xl hover:bg-emerald-700"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleChangeStatus(selectedProduct._id, "rejected")
-                      }
-                      className="flex-1 bg-red-600 text-white py-2 rounded-xl hover:bg-red-700"
-                    >
-                      Reject
-                    </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 border rounded-xl">
+                    <p className="text-xs text-gray-400">Category</p>
+                    <p className="font-bold">{selectedProduct.category}</p>
                   </div>
-                )}
+                  <div className="p-3 border rounded-xl">
+                    <p className="text-xs text-gray-400">Quantity</p>
+                    <p className="font-bold">{selectedProduct.quantity}</p>
+                  </div>
+                  <div className="p-3 border rounded-xl">
+                    <p className="text-xs text-gray-400">Weight</p>
+                    <p className="font-bold">{selectedProduct.weight}</p>
+                  </div>
+                  <div className="p-3 border rounded-xl">
+                    <p className="text-xs text-gray-400">Status</p>
+                    <p className="font-bold capitalize">{selectedProduct.status}</p>
+                    {selectedProduct.status === "pending" && (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => handleChangeStatus(selectedProduct._id, "approved")}
+                          className="flex-1 bg-emerald-600 text-white py-1 rounded-xl hover:bg-emerald-700"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleChangeStatus(selectedProduct._id, "rejected")}
+                          className="flex-1 bg-red-600 text-white py-1 rounded-xl hover:bg-red-700"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 border rounded-xl col-span-2">
+                    <p className="text-xs text-gray-400">Seller Name</p>
+                    <p className="font-bold">{selectedProduct.sellerName}</p>
+                    
+                    <p className="text-xs text-gray-400">Email</p>
+                    <p className="font-bold">{selectedProduct.sellerEmail || "N/A"}</p>
+
+                    <p className="text-xs text-gray-400">Phone</p>
+                    <p className="font-bold">{selectedProduct.sellerPhone}</p>
+                    <p className="text-xs text-gray-400">Address</p>
+                    <p className="font-bold">{selectedProduct.sellerAddress}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ================= GRID ================= */}
-      <main className="p-6 max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* IMAGE POPUP */}
+      {selectedImage && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="relative max-w-4xl w-full">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-lg hover:text-red-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img src={selectedImage} alt="Selected" className="w-full max-h-[90vh] object-contain rounded-xl" />
+          </div>
+        </div>
+      )}
+
+      {/* HEADER & SEARCH */}
+      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-6 md:px-12">
+        <div className="max-w-6xl mx-auto flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900">Master Request List</h1>
+            <p className="text-sm text-gray-500 font-medium">Viewing {filteredProducts.length} items</p>
+          </div>
+          <button onClick={fetchAllRequests} className="p-2 hover:bg-gray-100 rounded-full">
+            <RefreshCcw className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by product, seller name or email..."
+            className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </header>
+
+      {/* MAIN GRID */}
+      <main className="p-4 md:p-12 max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredProducts.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed col-span-full">
             <Package className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-            <p className="text-gray-500 font-bold">
-              No results matching your search.
-            </p>
+            <p className="text-gray-500 font-bold">No results matching your search.</p>
           </div>
         ) : (
-          filteredProducts.map((product) => {
-            const imageUrl = product.images?.[0]
-              ? `${API_URL}/${product.images[0].replace(/\\/g, "/")}`
-              : noImage;
-
-            return (
-              <div
-                key={product._id}
-                onClick={() => setSelectedProduct(product)}
-                className="bg-white rounded-3xl shadow border overflow-hidden hover:shadow-xl transition cursor-pointer relative"
-              >
-                <div className="aspect-video overflow-hidden">
-                  <img
-                    src={imageUrl}
-                    alt="product"
-                    onError={(e) => (e.target.src = noImage)}
-                    className="w-full h-full object-cover"
-                  />
+          filteredProducts.map((product) => (
+            <div
+              key={product._id}
+              className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group relative cursor-pointer"
+              onClick={() => setSelectedProduct(product)}
+            >
+              {/* Product Image */}
+              <div className="relative aspect-video overflow-hidden">
+                <img
+                  src={product.images?.[0] ? `${API_URL}/${product.images[0].replace(/\\/g, "/")}` : "https://via.placeholder.com/400x300"}
+                  alt={product.name}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase text-emerald-600">
+                  {product.category}
                 </div>
-
-                <div className="p-5 space-y-2">
-                  <h2 className="font-bold capitalize">
-                    {product.name}
-                  </h2>
-
-                  <p className="text-emerald-600 font-bold">
-                    LKR {Number(product.price || 0).toLocaleString()}
-                  </p>
-
-                  <p className="text-xs text-gray-400">
-                    {product.sellerName || "Unknown Seller"}
-                  </p>
-                </div>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(product._id);
-                  }}
-                  className="absolute top-3 right-3 bg-red-600 text-white p-2 rounded-full"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
-            );
-          })
+
+              <div className="p-6 space-y-2">
+                <div className="flex justify-between items-start mb-2">
+                  <h2 className="font-black text-gray-800 text-lg capitalize">{product.name}</h2>
+                  <p className="text-emerald-600 font-black text-sm whitespace-nowrap ml-2">
+                    LKR {product.price}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-widest">
+                  <MapPin className="w-3.5 h-3.5" /> {product.sellerName || "Unknown Seller"} | {product.sellerEmail || "N/A"}
+                </div>
+
+                <div className="flex items-center gap-2 text-gray-400 text-xs font-bold">
+                  Quantity: <span className="font-bold">{product.quantity}</span> | Status:{" "}
+                  <span className="font-bold capitalize">{product.status}</span>
+                </div>
+
+                {/* Approve / Reject Buttons */}
+                {product.status === "pending" && (
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleChangeStatus(product._id, "approved");
+                      }}
+                      className="flex-1 bg-emerald-600 text-white py-1 rounded-xl hover:bg-emerald-700"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleChangeStatus(product._id, "rejected");
+                      }}
+                      className="flex-1 bg-red-600 text-white py-1 rounded-xl hover:bg-red-700"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Delete Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation(); // prevent opening modal
+                  handleDelete(product._id);
+                }}
+                className="absolute top-3 right-3 z-10 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))
         )}
       </main>
-    </div>
-  );
-}
-
-/* -------- SMALL INFO COMPONENT -------- */
-function Info({ label, value }) {
-  return (
-    <div className="p-3 border rounded-xl">
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="font-bold capitalize">{value || "N/A"}</p>
     </div>
   );
 }
