@@ -75,12 +75,10 @@ export default function SellerRequest() {
 
     try {
       const { data } = await axios.patch(`${API_URL}/api/sellerRequest/update-status/${id}`, { status });
-
       if (data.success) {
         setProducts((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
         setFilteredProducts((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
         if (selectedProduct?._id === id) setSelectedProduct({ ...selectedProduct, status });
-
         toast.success(`Status changed to ${status} & email sent to seller`);
       } else {
         toast.error(data.message || "Failed to update status");
@@ -89,6 +87,16 @@ export default function SellerRequest() {
       console.error(err);
       toast.error("Failed to update status or send email");
     }
+  };
+
+  // --- Helper to get image URL ---
+  const getImageUrl = (img) => {
+    if (!img) return noImage;
+    // If img is object with url (Cloudinary)
+    if (typeof img === "object" && img.url) return img.url;
+    // If img is string (local fallback)
+    if (typeof img === "string") return `${API_URL}/${img.replace(/\\/g, "/")}`;
+    return noImage;
   };
 
   if (loading)
@@ -116,22 +124,18 @@ export default function SellerRequest() {
 
             <div className="flex flex-col lg:flex-row gap-4 p-4">
               {/* Images */}
-                   {/* Images */}
               <div className="lg:w-1/2 flex flex-col gap-3">
                 {selectedProduct.images?.length ? (
-                  selectedProduct.images.map((img, i) => {
-                    const imageUrl = `${API_URL}/${img.replace(/\\/g, "/")}`;
-                    return (
-                      <img
-                        key={i}
-                        src={imageUrl}
-                        alt="product"
-                        onError={(e) => (e.target.src = noImage)}
-                        className="w-full h-64 object-cover rounded-xl cursor-pointer"
-                        onClick={() => setSelectedImage(imageUrl)}
-                      />
-                    );
-                  })
+                  selectedProduct.images.map((img, i) => (
+                    <img
+                      key={i}
+                      src={getImageUrl(img)}
+                      alt={`product-${i}`}
+                      onError={(e) => (e.target.src = noImage)}
+                      className="w-full h-64 object-cover rounded-xl cursor-pointer"
+                      onClick={() => setSelectedImage(getImageUrl(img))}
+                    />
+                  ))
                 ) : (
                   <img
                     src={noImage}
@@ -144,7 +148,9 @@ export default function SellerRequest() {
               {/* Details */}
               <div className="lg:w-1/2 p-6 flex flex-col gap-4">
                 <h2 className="text-3xl font-black text-gray-900 capitalize">{selectedProduct.name}</h2>
-                <p className="text-2xl font-bold text-emerald-600">LKR {selectedProduct.price.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  LKR {selectedProduct.price.toLocaleString()}
+                </p>
                 <p className="text-gray-600 bg-gray-50 p-4 rounded-xl italic">{selectedProduct.description}</p>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -183,7 +189,7 @@ export default function SellerRequest() {
                   <div className="p-3 border rounded-xl col-span-2">
                     <p className="text-xs text-gray-400">Seller Name</p>
                     <p className="font-bold">{selectedProduct.sellerName}</p>
-                    
+
                     <p className="text-xs text-gray-400">Email</p>
                     <p className="font-bold">{selectedProduct.sellerEmail || "N/A"}</p>
 
@@ -255,7 +261,7 @@ export default function SellerRequest() {
               {/* Product Image */}
               <div className="relative aspect-video overflow-hidden">
                 <img
-                  src={product.images?.[0] ? `${API_URL}/${product.images[0].replace(/\\/g, "/")}` : "https://via.placeholder.com/400x300"}
+                  src={product.images?.[0] ? getImageUrl(product.images[0]) : noImage}
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
@@ -268,7 +274,7 @@ export default function SellerRequest() {
                 <div className="flex justify-between items-start mb-2">
                   <h2 className="font-black text-gray-800 text-lg capitalize">{product.name}</h2>
                   <p className="text-emerald-600 font-black text-sm whitespace-nowrap ml-2">
-                    LKR {product.price}
+                    LKR {product.price.toLocaleString()}
                   </p>
                 </div>
 
