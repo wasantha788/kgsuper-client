@@ -29,7 +29,7 @@ const Orders = () => {
 
   const token = user?.token;
 
-  // ---------------- TIMER TICKER ----------------
+  // ---------------- TIMER TICKER (Handles search timeout) ----------------
   useEffect(() => {
     const ticker = setInterval(() => {
       setCountdowns((prev) => {
@@ -38,13 +38,14 @@ const Orders = () => {
           if (updated[id] > 1) {
             updated[id] -= 1;
           } else {
+            // If time runs out
             setOrders((prevOrders) =>
               prevOrders.map((o) =>
                 o._id === id ? { ...o, status: "Order Placed" } : o
               )
             );
             delete updated[id];
-            toast.error("No delivery boy accepted in time.");
+            toast.error(`No rider found for order ${id.slice(-5)}`);
           }
         });
         return updated;
@@ -62,13 +63,8 @@ const Orders = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (data.success) setOrders(data.orders || []);
-      else {
-        setOrders([]);
-        setError(data.message || "No orders found");
-      }
+      else setOrders([]);
     } catch (err) {
-      setOrders([]);
-      setError("Failed to load orders");
       toast.error("Failed to load orders");
     } finally {
       setLoading(false);
@@ -77,17 +73,13 @@ const Orders = () => {
 
   // ---------------- GENERATE & SEND PDF EMAIL ----------------
   const sendEmailReceipt = async (order) => {
-    if (!order.address?.email) {
-      toast.error("No customer email found for this order.");
-      return;
-    }
+    if (!order.address?.email) return toast.error("No customer email found.");
     setSendingEmail(order._id);
 
     try {
-      // 1. Generate PDF in memory
       const doc = new jsPDF();
       doc.setFontSize(18);
-      doc.text("Order Receipt", 14, 20);
+      doc.text("KGSUPER RECEIPT", 14, 20);
       doc.setFontSize(10);
       doc.text(`Order ID: ${order._id}`, 14, 28);
       doc.text(`Customer: ${order.address?.firstName} ${order.address?.lastName}`, 14, 34);
@@ -107,74 +99,26 @@ const Orders = () => {
 
       doc.text(`Grand Total: ${currency}${order.amount.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 10);
 
-      // 2. Convert to Base64
-      // We strip the data URL prefix (e.g., "data:application/pdf;base64,")
       const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-      // 3. Send to Backend
-      const { data } = await axios.post(
-        "/api/order/send-receipt",
-        { 
-          email: order.address.email, 
-          orderDetails: order,
-          pdfData: pdfBase64, // Sending the string to backend
-          fileName: `Receipt_${order._id}.pdf`
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await axios.post("/api/order/send-receipt", { 
+        email: order.address.email, 
+        pdfData: pdfBase64, 
+        fileName: `Receipt_${order._id.slice(-6)}.pdf`
+      }, { headers: { Authorization: `Bearer ${token}` } });
 
-      if (data.success) toast.success("PDF Receipt sent to customer!");
+      if (data.success) toast.success("Receipt emailed successfully!");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to send PDF email");
+      toast.error("Failed to send email receipt.");
     } finally {
       setSendingEmail(null);
     }
   };
 
-  // ---------------- DOWNLOAD PDF ----------------
-  const downloadPaidPDF = () => {
-    try {
-      const paidOrders = orders.filter((order) => order.isPaid === true);
-      if (paidOrders.length === 0) {
-        toast.error("No paid orders found to export.");
-        return;
-      }
-
-      const totalPaidAmount = paidOrders.reduce((sum, order) => sum + order.amount, 0);
-      const doc = new jsPDF();
-      doc.setFontSize(18);
-      doc.text("Paid Orders Report", 14, 20);
-
-      const tableData = paidOrders.map((order) => [
-        order._id,
-        `${order.address?.firstName || ""} ${order.address?.lastName || ""}`,
-        order.items?.map((i) => `${i.product?.name || "Product"} (x${i.quantity})`).join(", "),
-        `${currency}${order.amount.toFixed(2)}`,
-        new Date(order.createdAt).toLocaleDateString("en-GB"),
-      ]);
-
-      autoTable(doc, {
-        startY: 32,
-        head: [["Order ID", "Customer", "Items", "Total", "Date"]],
-        body: tableData,
-        theme: "grid",
-        headStyles: { fillColor: [41, 128, 185] },
-      });
-
-      const finalY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(14);
-      doc.text(`Total Paid Amount: ${currency}${totalPaidAmount.toFixed(2)}`, 14, finalY);
-
-      doc.save(`Paid_Orders_${Date.now()}.pdf`);
-      toast.success("PDF Downloaded!");
-    } catch (err) {
-      toast.error("Error generating PDF.");
-    }
-  };
-
-  // ---------------- SOCKET.IO ----------------
+  // ---------------- SOCKET.IO (Real-time events) ----------------
   useEffect(() => {
     if (!user?._id) return;
+    // UPDATED: Pointing to Railway Production URL
     const socket = io("https://kgsuper-server-production.up.railway.app", {
       transports: ["websocket"],
       withCredentials: true,
@@ -186,40 +130,54 @@ const Orders = () => {
     socket.emit("join_seller");
 
     socket.on("orderAcceptedByDelivery", ({ orderId, deliveryBoy }) => {
-      setCountdowns((prev) => {
-        const updated = { ...prev };
-        delete updated[orderId];
-        return updated;
-      });
-      setOrders((prev) =>
-        prev.map((o) =>
-          o._id === orderId
-            ? { ...o, assignedDeliveryBoy: deliveryBoy, status: "Out for delivery" }
-            : o
-        )
-      );
-      toast.success(`✅ Order accepted by ${deliveryBoy.name}`);
+      setCountdowns((prev) => { const u = { ...prev }; delete u[orderId]; return u; });
+      setOrders((prev) => prev.map((o) => 
+        o._id === orderId ? { ...o, assignedDeliveryBoy: deliveryBoy, status: "Out for delivery" } : o
+      ));
+      toast.success(`✅ Rider ${deliveryBoy.name} accepted!`, { duration: 4000 });
     });
 
-    socket.on("orderUnaccepted", (orderId) => {
-      setCountdowns((prev) => {
-        const updated = { ...prev };
-        delete updated[orderId];
-        return updated;
-      });
-      setOrders((prev) =>
-        prev.map((o) => (o._id === orderId ? { ...o, status: "Order Placed" } : o))
-      );
-      toast.error(`⚠️ No delivery boy accepted order ${orderId}.`);
-    });
-
-    return () => {
-      socket.off();
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, [user]);
 
   useEffect(() => { fetchOrders(); }, [user]);
+
+  // ---------------- ACTIONS ----------------
+  const updateStatus = async (orderId, status) => {
+    try {
+      const { data } = await axios.put(`/api/order/status/${orderId}`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+      if (data.success) {
+        setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status } : o));
+        toast.success(`Status: ${status}`);
+      }
+    } catch (err) { toast.error("Update failed"); }
+  };
+
+  const sendToDelivery = async (order) => {
+    if (!socketRef.current) return toast.error("Socket disconnected");
+    
+    // UI Feedback
+    setCountdowns(prev => ({ ...prev, [order._id]: 30 })); 
+    socketRef.current.emit("send-to-delivery", { order });
+    
+    try {
+      await axios.put(`/api/order/status/${order._id}`, { status: "Out for delivery" }, { headers: { Authorization: `Bearer ${token}` } });
+      toast("Searching for riders...", { icon: '🔍' });
+    } catch (err) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  const deleteOrder = async (orderId) => {
+    if (!window.confirm("Delete this order?")) return;
+    try {
+      const { data } = await axios.delete(`/api/order/delete/${orderId}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (data.success) {
+        toast.success("Deleted");
+        setOrders(prev => prev.filter(o => o._id !== orderId));
+      }
+    } catch (err) { toast.error("Delete failed"); }
+  };
 
   // ---------------- HELPERS ----------------
   const copyOrderId = (id) => {
@@ -228,137 +186,90 @@ const Orders = () => {
     setTimeout(() => setCopiedOrderId(""), 2000);
   };
 
-  const getPaymentStyle = (type) => {
-    const isCod = type?.toLowerCase() === "cod";
-    return isCod ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-green-100 text-green-700 border-green-200";
-  };
-
-  const statusColor = (status) => {
-    switch (status) {
-      case "Order Placed": return "text-green-600";
-      case "Packing": return "text-purple-600";
-      case "Processing":
-      case "Out for delivery": return "text-blue-600";
-      case "Delivered": return "text-red-600";
-      default: return "text-gray-600";
-    }
-  };
-
-  const paymentStatusDisplay = (isPaid, status) => {
-    if (status === "Cancelled") return <span className="text-red-600 font-semibold">Cancelled</span>;
-    return isPaid ? <span className="text-green-600 font-semibold">Paid</span> : <span className="text-orange-500 font-semibold">Pending</span>;
-  };
-
-  // ---------------- ACTIONS ----------------
-  const updateStatus = async (orderId, status) => {
-    if (processingOrders.includes(orderId)) return;
-    setProcessingOrders((prev) => [...prev, orderId]);
-    try {
-      const { data } = await axios.put(`/api/order/status/${orderId}`, { status }, { headers: { Authorization: `Bearer ${token}` } });
-      if (data.success) {
-        setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status } : o)));
-        toast.success(`Status updated to ${status}`);
-      }
-    } catch (err) { toast.error("Failed to update status"); }
-    finally { setProcessingOrders((prev) => prev.filter((id) => id !== orderId)); }
-  };
-
-  const sendToDelivery = async (order) => {
-    if (!socketRef.current || processingOrders.includes(order._id)) return;
-    setProcessingOrders((prev) => [...prev, order._id]);
-    setCountdowns((prev) => ({ ...prev, [order._id]: 10 }));
-    setOrders((prev) => prev.map((o) => o._id === order._id ? { ...o, status: "Out for delivery" } : o));
-    socketRef.current.emit("send-to-delivery", { order });
-
-    try {
-      await axios.put(`/api/order/status/${order._id}`, { status: "Out for delivery" }, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success(`Searching for rider...`);
-    } catch (err) {
-      setCountdowns((prev) => { const u = { ...prev }; delete u[order._id]; return u; });
-      toast.error("Failed to initiate delivery");
-    } finally {
-      setProcessingOrders((prev) => prev.filter((id) => id !== order._id));
-    }
-  };
-
-  const deleteOrder = async (orderId) => {
-    if (!window.confirm("Are you sure?")) return;
-    try {
-      const { data } = await axios.delete(`/api/order/delete/${orderId}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (data.success) {
-        toast.success("Deleted");
-        setOrders((prev) => prev.filter((o) => o._id !== orderId));
-      }
-    } catch (err) { toast.error("Delete failed"); }
-  };
+  const getPaymentStyle = (type) => type?.toLowerCase() === "cod" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700";
 
   return (
-    <div className="flex-1 min-h-screen bg-gray-50 py-6 overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-4 md:px-10">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <div className="flex items-center gap-4">
-            <h2 className="text-3xl font-bold text-gray-800">Seller Orders</h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-white border rounded-full shadow-sm">
-              <div className={`w-2.5 h-2.5 rounded-full ${isLive ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
-              <span className="text-xs font-medium text-gray-600">{isLive ? "Live" : "Offline"}</span>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={downloadPaidPDF} className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 font-semibold text-sm transition-all">Download Paid PDF</button>
-            <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-sm font-semibold">Refresh</button>
+    <div className="flex-1 min-h-screen bg-gray-50 py-6">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Order Dashboard</h2>
+          <div className="flex items-center gap-3">
+             <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${isLive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                {isLive ? "● SYSTEM LIVE" : "○ OFFLINE"}
+             </div>
+             <button onClick={fetchOrders} className="bg-white border px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-all">Refresh</button>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {orders.map((order) => (
-            <div key={order._id} className={`p-6 bg-white rounded-xl border shadow-md flex flex-col md:flex-row gap-6 justify-between ${order.status === "Cancelled" ? "border-red-400 bg-red-50 opacity-80" : "border-gray-200"}`}>
-              <div className="flex-1 space-y-4">
-                <div className="flex items-center gap-3">
-                  <p className="text-gray-600 text-sm">Order ID: <span className="font-bold text-gray-800">{order._id}</span></p>
-                  <button onClick={() => copyOrderId(order._id)} className="text-blue-500 text-xs font-bold uppercase">{copiedOrderId === order._id ? "Copied!" : "Copy"}</button>
-                  <span className={`px-2 py-0.5 text-[10px] font-black rounded border ${getPaymentStyle(order.paymentType)}`}>
-                    {order.paymentType?.toUpperCase() || "ONLINE"}
-                  </span>
+            <div key={order._id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 md:flex gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-xs font-mono font-bold text-gray-400">#{order._id.slice(-8).toUpperCase()}</span>
+                  <button onClick={() => copyOrderId(order._id)} className="text-[10px] text-blue-500 font-bold underline">{copiedOrderId === order._id ? "COPIED" : "COPY ID"}</button>
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${getPaymentStyle(order.paymentType)}`}>{order.paymentType || "ONLINE"}</span>
                 </div>
-                {order.items?.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-gray-50 p-2 rounded">
-                    <img src={item.product?.image?.[0] || assets.box_icon} className="w-16 h-16 rounded object-cover" alt="" />
-                    <p className="font-medium">{item.product?.name} <span className="text-blue-600 font-bold ml-1">x{item.quantity}</span></p>
-                  </div>
-                ))}
-                <div className="text-sm text-gray-700">
-                  <p className="font-bold">{order.address?.firstName} {order.address?.lastName}</p>
-                  <p>{order.address?.street}, {order.address?.city}</p>
-                  <p className="text-blue-600 font-medium italic">{order.address?.email}</p>
+
+                <div className="space-y-2 mb-4">
+                  {order.items.map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <img src={item.product?.image?.[0]} className="w-10 h-10 rounded object-cover bg-gray-100" alt="" />
+                      <p className="text-sm font-medium text-gray-700">{item.product?.name} <span className="text-blue-600">x{item.quantity}</span></p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="text-xs text-gray-500">
+                  <p className="font-bold text-gray-700">{order.address.firstName} {order.address.lastName}</p>
+                  <p>{order.address.street}, {order.address.city}</p>
                 </div>
               </div>
 
-              <div className="flex flex-col md:items-end gap-3 min-w-[200px]">
-                <p className="text-xl font-bold">{currency}{order.amount.toFixed(2)}</p>
-                <select value={order.status} disabled={order.status === "Cancelled" || processingOrders.includes(order._id)} className={`w-full border rounded px-3 py-1 font-bold ${statusColor(order.status)}`} onChange={(e) => updateStatus(order._id, e.target.value)}>
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <div className="text-xs text-right text-gray-500 space-y-1">
-                  <p>Payment: {paymentStatusDisplay(order.isPaid, order.status)}</p>
-                  <p>Date: {new Date(order.createdAt).toLocaleDateString("en-GB")}</p>
-                </div>
+              <div className="flex flex-col md:items-end justify-between gap-4 mt-4 md:mt-0 min-w-[200px]">
+                <p className="text-xl font-black text-gray-900">{currency}{order.amount.toFixed(2)}</p>
+                
+                <div className="w-full space-y-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Status Control</label>
+                  <select 
+                    value={order.status} 
+                    onChange={(e) => updateStatus(order._id, e.target.value)}
+                    className="w-full p-2 border rounded-lg text-sm font-bold bg-white outline-none"
+                  >
+                    {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
 
-                <div className="w-full flex flex-col gap-2 mt-2">
-                  {order.isPaid ? (
+                  {/* ACTION BUTTONS */}
+                  <div className="flex flex-col gap-2">
                     <button 
-                      onClick={() => sendEmailReceipt(order)} 
-                      disabled={sendingEmail === order._id} 
-                      className="w-full py-1.5 bg-green-600 text-white text-xs font-bold rounded hover:bg-green-700 transition-colors"
+                      onClick={() => sendEmailReceipt(order)}
+                      disabled={sendingEmail === order._id || !order.isPaid}
+                      className="w-full py-2 bg-emerald-600 text-white text-[10px] font-bold rounded hover:bg-emerald-700 disabled:bg-gray-200"
                     >
-                      {sendingEmail === order._id ? "SENDING PDF..." : "📩 EMAIL PDF RECEIPT"}
+                      {sendingEmail === order._id ? "SENDING..." : "📩 EMAIL RECEIPT"}
                     </button>
-                  ) : (
-                    <div className="w-full py-1.5 bg-gray-100 text-gray-400 text-[10px] font-bold rounded text-center border border-gray-200">
-                      PAYMENT PENDING
-                    </div>
-                  )}
-                  {/* Delivery logic omitted for brevity, same as before */}
-                  <button onClick={() => deleteOrder(order._id)} className="mt-2 px-4 py-1 bg-red-600 text-white font-semibold rounded text-xs opacity-80 hover:opacity-100">Delete Order</button>
+
+                    {countdowns[order._id] ? (
+                      <div className="w-full py-2 bg-orange-500 text-white text-[10px] font-black rounded text-center animate-pulse">
+                         SEARCHING RIDERS ({countdowns[order._id]}s)
+                      </div>
+                    ) : (
+                      !order.assignedDeliveryBoy && order.status !== "Cancelled" && (
+                        <button 
+                          onClick={() => sendToDelivery(order)}
+                          className="w-full py-2 bg-blue-600 text-white text-[10px] font-bold rounded hover:bg-blue-700"
+                        >
+                          🚀 DISPATCH TO DELIVERY
+                        </button>
+                      )
+                    )}
+
+                    {order.assignedDeliveryBoy && (
+                      <div className="w-full py-2 bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold rounded text-center">
+                        RIDER: {order.assignedDeliveryBoy.name.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
