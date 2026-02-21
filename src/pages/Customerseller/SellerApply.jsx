@@ -238,12 +238,18 @@ function SellerAddProduct() {
               <input type="text" name="name" value={form.name} onChange={handleChange} required className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all font-bold"/>
             </div>
             <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Category</label>
-              <select name="category" value={form.category} onChange={handleChange} required className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold">
-                <option value="">Select Category</option>
-                <option value="Vegetables">Vegetables</option>
-                <option value="Food & Beverages">Food & Beverages</option>
-              </select>
+              <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">
+                Category
+              </label>
+              <input
+                type="text"
+                name="category"
+                placeholder="e.g. Vegetables, Snacks"
+                value={form.category}
+                onChange={handleChange}
+                required
+                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all font-bold"
+              />
             </div>
             <div>
               <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Price (Rs.)</label>
