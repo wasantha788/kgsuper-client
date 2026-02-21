@@ -98,37 +98,59 @@ const Orders = () => {
 };
 
   // ---------------- DOWNLOAD PDF ----------------
-  const downloadPaidPDF = () => {
-    try {
-      const paidOrders = orders.filter((order) => order.isPaid === true);
-      if (paidOrders.length === 0) {
-        toast.error("No paid orders found to export.");
-        return;
-      }
-      const doc = new jsPDF();
-      doc.setFontSize(18);
-      doc.text("Paid Orders Report", 14, 20);
-      const tableData = paidOrders.map((order) => [
-        order._id,
-        `${order.address?.firstName || ""} ${order.address?.lastName || ""}`,
-        order.items?.map((i) => `${i.product?.name || "Product"} (x${i.quantity})`).join(", "),
-        `${currency}${order.amount.toFixed(2)}`,
-        new Date(order.createdAt).toLocaleDateString("en-GB"),
-      ]);
-      autoTable(doc, {
-        startY: 32,
-        head: [["Order ID", "Customer", "Items", "Total", "Date"]],
-        body: tableData,
-        theme: "grid",
-        headStyles: { fillColor: [41, 128, 185] },
-      });
-      doc.save(`Paid_Orders_${Date.now()}.pdf`);
-      toast.success("PDF Downloaded!");
-    } catch (err) {
-      toast.error("Error generating PDF.");
-    }
-  };
+const downloadPaidPDF = () => {
+  try {
+    const paidOrders = orders.filter((order) => order.isPaid === true);
 
+    if (paidOrders.length === 0) {
+      toast.error("No paid orders found to export.");
+      return;
+    }
+
+    // ✅ Calculate total of paid orders
+    const totalPaidAmount = paidOrders.reduce(
+      (sum, order) => sum + order.amount,
+      0
+    );
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("Paid Orders Report", 14, 20);
+
+    const tableData = paidOrders.map((order) => [
+      order._id,
+      `${order.address?.firstName || ""} ${order.address?.lastName || ""}`,
+      order.items
+        ?.map((i) => `${i.product?.name || "Product"} (x${i.quantity})`)
+        .join(", "),
+      `${currency}${order.amount.toFixed(2)}`,
+      new Date(order.createdAt).toLocaleDateString("en-GB"),
+    ]);
+
+    autoTable(doc, {
+      startY: 32,
+      head: [["Order ID", "Customer", "Items", "Total", "Date"]],
+      body: tableData,
+      theme: "grid",
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    // ✅ Add total below the table
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(14);
+    doc.text(
+      `Total Paid Amount: ${currency}${totalPaidAmount.toFixed(2)}`,
+      14,
+      finalY
+    );
+
+    doc.save(`Paid_Orders_${Date.now()}.pdf`);
+    toast.success("PDF Downloaded!");
+  } catch (err) {
+    toast.error("Error generating PDF.");
+  }
+};
   // ---------------- SOCKET.IO ----------------
   useEffect(() => {
     if (!user?._id) return;
