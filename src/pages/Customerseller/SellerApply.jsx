@@ -244,7 +244,6 @@ function SellerAddProduct() {
               <input
                 type="text"
                 name="category"
-                placeholder="e.g. Vegetables, Snacks"
                 value={form.category}
                 onChange={handleChange}
                 required
