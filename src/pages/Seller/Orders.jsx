@@ -80,8 +80,7 @@ const Orders = () => {
   // Since you are using 'axios' from useAppContext, it already uses withCredentials: true
   // and we will pass the headers explicitly just to be safe.
   
-  const activeToken = localStorage.getItem("token") || 
-                      localStorage.getItem("sellerToken");
+  const activeToken = localStorage.getItem("sellerToken");
 
   if (!activeToken) {
     toast.error("Seller session not found. Please log in again.");
