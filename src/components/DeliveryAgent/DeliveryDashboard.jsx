@@ -125,25 +125,39 @@ const DeliveryDashboard = () => {
     setOrders((prev) => prev.filter((o) => o._id !== orderId));
   };
 
-  const markAsPaid = async (orderId) => {
-    try {
-      const token = localStorage.getItem("deliveryToken");
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/delivery/order/${orderId}/send-payment-otp`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+         const markAsPaid = async (orderId) => {
+  try {
+    // 1. Double check the key name in your login logic! 
+    const token = localStorage.getItem("deliveryToken"); 
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      setOtpOrderId(orderId);
-      setShowOtpModal(true);
-      toast.success("OTP sent to customer's email");
-    } catch (err) {
-      toast.error(err.message);
+    if (!token) {
+      toast.error("Session expired. Please log in again.");
+      return;
     }
-  };
 
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/delivery/order/${orderId}/send-payment-otp`, {
+      method: "POST",
+      headers: { 
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json" // Added for consistency
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      // This will tell you if it's a 401 (Auth), 404 (Route), or 500 (Server Error)
+      throw new Error(data.message || `Server responded with ${res.status}`);
+    }
+
+    setOtpOrderId(orderId);
+    setShowOtpModal(true);
+    toast.success("OTP sent to customer's email");
+  } catch (err) {
+    console.error("OTP Send Error:", err);
+    toast.error(err.message);
+  }
+};
   const verifyOtp = async () => {
     if (emailOtp.length < 4) return toast.error("Enter valid OTP");
 
