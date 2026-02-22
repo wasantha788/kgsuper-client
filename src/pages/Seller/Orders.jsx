@@ -78,7 +78,7 @@ const Orders = () => {
      // ---------------- GENERATE & sendEmailReceipt  ----------------
     const sendEmailReceipt = async (order) => {
     // 1. Get the correct token (Adjust this to where you store your token)
-    const storedToken = localStorage.getItem('token'); 
+    const Token = localStorage.getItem('token'); 
 
     if (!order.address?.email) {
       toast.error("No customer email found for this order.");
@@ -105,7 +105,7 @@ const Orders = () => {
         { 
           headers: { 
             // Fix: Ensure token is not undefined
-            Authorization: `Bearer ${storedToken}` 
+            Authorization: `Bearer ${Token}` 
           } 
         }
       );
