@@ -14,10 +14,14 @@ const SellerLogin = () => {
       const { data } = await axios.post('/api/seller/login', { email, password });
 
       if (data.success) {
+        // --- ADD THIS LINE ---
+        localStorage.setItem('sellerToken', data.token); 
+        
         setIsSeller(true);
+        toast.success("Login Successful"); // Added for feedback
         navigate('/seller');
       } else {
-        toast.error(data.message );
+        toast.error(data.message);
       }
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
