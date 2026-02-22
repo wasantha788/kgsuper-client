@@ -15,9 +15,12 @@ export const AppContextProvider = ({ children }) => {
 
   // --- HELPERS ---
   const getHeaders = () => {
-    const token = localStorage.getItem("deliveryToken");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
+  // Check for sellerToken first, then deliveryToken
+  const token = localStorage.getItem("token") || 
+                localStorage.getItem("sellerToken") || 
+                localStorage.getItem("deliveryToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
   // --- STATE ---
   const [user, setUser] = useState(null);
