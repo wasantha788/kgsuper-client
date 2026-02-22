@@ -174,10 +174,16 @@ const DeliveryDashboard = () => {
   };
 
   // Helper logic to categorize orders
-  const myOrders = orders.filter(o => 
-    o.assignedDeliveryBoy === user._id || o.assignedDeliveryBoy?._id === user._id
-  );
-  const pendingOrders = orders.filter(o => !o.assignedDeliveryBoy);
+  // DeliveryDashboard.jsx - around line 145
+const myOrders = orders.filter(o => 
+  o.assignedDeliveryBoy === user._id || o.assignedDeliveryBoy?._id === user._id
+);
+
+// FIXED: Filter for orders that are "Out for delivery" but NOT YET accepted by anyone
+const pendingOrders = orders.filter(o => 
+  !o.assignedDeliveryBoy && o.status === "Out for delivery"
+);
+
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
