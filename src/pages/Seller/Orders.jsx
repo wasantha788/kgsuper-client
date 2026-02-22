@@ -76,49 +76,50 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-    const sendEmailReceipt = async (order) => {
-    // 1. Get the correct token (Adjust this to where you store your token)
-    const Token = localStorage.getItem('token'); 
+      const sendEmailReceipt = async (order) => {
+  // 1. Get the token directly inside the function to be sure it's fresh
+  const activeToken = token || localStorage.getItem('sellerToken') || localStorage.getItem('token'); 
 
-    if (!order.address?.email) {
-      toast.error("No customer email found for this order.");
-      return;
-    }
-    
-    setSendingEmail(order._id);
+  if (!activeToken) {
+    toast.error("Authentication session expired. Please login again.");
+    return;
+  }
 
-    try {
-      const doc = new jsPDF();
-      // ... (Your PDF generation code is fine) ...
+  if (!order.address?.email) {
+    toast.error("No customer email found for this order.");
+    return;
+  }
+  
+  setSendingEmail(order._id);
 
-      // 2. Optimization: Use 'datauristring' carefully
-      const pdfBase64 = doc.output('datauristring').split(',')[1];
+  try {
+    const doc = new jsPDF();
+    // ... PDF Logic ...
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-      // 3. Send to Backend with proper Base URL if needed
-      // Change this part in your Orders.js
-      const { data } = await axios.post(
-        "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
-        {
-          email: order.address.email,
-          pdfData: pdfBase64,
-          fileName: `Receipt_${order._id}.pdf`
-        },
-        {
-          headers: {
-            // Use 'token' which is defined at the top of your Orders component
-            Authorization: `Bearer ${token}`
-          }
+    const { data } = await axios.post(
+      "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
+      {
+        email: order.address.email,
+        pdfData: pdfBase64,
+        fileName: `Receipt_${order._id}.pdf`
+      },
+      {
+        headers: {
+          // Use the activeToken we just found
+          Authorization: `Bearer ${activeToken}`
         }
-      );
+      }
+    );
 
-      if (data.success) toast.success("PDF Receipt sent to customer!");
-    } catch (err) {
-      console.error("Frontend Error:", err);
-      toast.error(err.response?.data?.message || "Failed to send PDF email");
-    } finally {
-      setSendingEmail(null);
-    }
-  };
+    if (data.success) toast.success("PDF Receipt sent to customer!");
+  } catch (err) {
+    console.error("Frontend Error:", err);
+    toast.error(err.response?.data?.message || "Failed to send PDF email");
+  } finally {
+    setSendingEmail(null);
+  }
+};
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
     try {
