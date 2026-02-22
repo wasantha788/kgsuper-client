@@ -95,18 +95,19 @@ const Orders = () => {
       const pdfBase64 = doc.output('datauristring').split(',')[1];
 
       // 3. Send to Backend with proper Base URL if needed
+      // Change this part in your Orders.js
       const { data } = await axios.post(
         "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
         {
           email: order.address.email,
-          pdfData: pdfBase64, 
+          pdfData: pdfBase64,
           fileName: `Receipt_${order._id}.pdf`
         },
-        { 
-          headers: { 
-            // Fix: Ensure token is not undefined
-            Authorization: `Bearer ${Token}` 
-          } 
+        {
+          headers: {
+            // Use 'token' which is defined at the top of your Orders component
+            Authorization: `Bearer ${token}`
+          }
         }
       );
 
