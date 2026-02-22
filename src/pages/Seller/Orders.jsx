@@ -76,50 +76,45 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-      const sendEmailReceipt = async (order) => {
-  // 1. Get the token directly inside the function to be sure it's fresh
-  const activeToken = token || localStorage.getItem('sellerToken') || localStorage.getItem('token'); 
+          const sendEmailReceipt = async (order) => {
+  // Since you are using 'axios' from useAppContext, it already uses withCredentials: true
+  // and we will pass the headers explicitly just to be safe.
+  
+  const activeToken = localStorage.getItem("token") || 
+                      localStorage.getItem("sellerToken");
 
   if (!activeToken) {
-    toast.error("Authentication session expired. Please login again.");
+    toast.error("Seller session not found. Please log in again.");
     return;
   }
 
-  if (!order.address?.email) {
-    toast.error("No customer email found for this order.");
-    return;
-  }
-  
   setSendingEmail(order._id);
 
   try {
     const doc = new jsPDF();
-    // ... PDF Logic ...
+    // ... your PDF generation logic ...
     const pdfBase64 = doc.output('datauristring').split(',')[1];
 
     const { data } = await axios.post(
-      "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
+      "https://kgsuper-server-production.up.railway.app/api/order/send-receipt", // Use relative path since baseURL is set
       {
         email: order.address.email,
         pdfData: pdfBase64,
         fileName: `Receipt_${order._id}.pdf`
       },
       {
-        headers: {
-          // Use the activeToken we just found
-          Authorization: `Bearer ${activeToken}`
-        }
+        headers: { Authorization: `Bearer ${activeToken}` }
       }
     );
 
-    if (data.success) toast.success("PDF Receipt sent to customer!");
+    if (data.success) toast.success("PDF Receipt sent!");
   } catch (err) {
-    console.error("Frontend Error:", err);
-    toast.error(err.response?.data?.message || "Failed to send PDF email");
+    toast.error(err.response?.data?.message || "Email failed");
   } finally {
     setSendingEmail(null);
   }
 };
+   
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
     try {
