@@ -251,7 +251,7 @@ const Orders = () => {
   const sendToDelivery = async (order) => {
     if (!socketRef.current || processingOrders.includes(order._id)) return;
     setProcessingOrders((prev) => [...prev, order._id]);
-    setCountdowns((prev) => ({ ...prev, [order._id]: 10 }));
+    setCountdowns((prev) => ({ ...prev, [order._id]: 20 }));
     setOrders((prev) => prev.map((o) => o._id === order._id ? { ...o, status: "Out for delivery" } : o));
     socketRef.current.emit("send-to-delivery", { order });
 
