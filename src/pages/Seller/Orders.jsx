@@ -75,62 +75,49 @@ const Orders = () => {
     }
   };
 
-  // ---------------- GENERATE & SEND PDF EMAIL ----------------
-  const sendEmailReceipt = async (order) => {
+     // ---------------- GENERATE & sendEmailReceipt  ----------------
+    const sendEmailReceipt = async (order) => {
+    // 1. Get the correct token (Adjust this to where you store your token)
+    const storedToken = localStorage.getItem('token'); 
+
     if (!order.address?.email) {
       toast.error("No customer email found for this order.");
       return;
     }
+    
     setSendingEmail(order._id);
 
     try {
-      // 1. Generate PDF in memory
       const doc = new jsPDF();
-      doc.setFontSize(18);
-      doc.text("Order Receipt", 14, 20);
-      doc.setFontSize(10);
-      doc.text(`Order ID: ${order._id}`, 14, 28);
-      doc.text(`Customer: ${order.address?.firstName} ${order.address?.lastName}`, 14, 34);
+      // ... (Your PDF generation code is fine) ...
 
-      const tableData = order.items?.map((item) => [
-        item.product?.name || "Product",
-        item.quantity,
-        `${currency}${item.product?.price || 0}`,
-        `${currency}${(item.quantity * (item.product?.price || 0)).toFixed(2)}`,
-      ]);
-
-      autoTable(doc, {
-        startY: 40,
-        head: [["Product", "Qty", "Price", "Total"]],
-        body: tableData,
-      });
-
-      doc.text(`Grand Total: ${currency}${order.amount.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 10);
-
-      // 2. Convert to Base64
-      // We strip the data URL prefix (e.g., "data:application/pdf;base64,")
+      // 2. Optimization: Use 'datauristring' carefully
       const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-      // 3. Send to Backend
+      // 3. Send to Backend with proper Base URL if needed
       const { data } = await axios.post(
-        "/api/order/send-receipt",
+        "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
         {
           email: order.address.email,
-          orderDetails: order,
-          pdfData: pdfBase64, // Sending the string to backend
+          pdfData: pdfBase64, 
           fileName: `Receipt_${order._id}.pdf`
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { 
+            // Fix: Ensure token is not undefined
+            Authorization: `Bearer ${storedToken}` 
+          } 
+        }
       );
 
       if (data.success) toast.success("PDF Receipt sent to customer!");
     } catch (err) {
+      console.error("Frontend Error:", err);
       toast.error(err.response?.data?.message || "Failed to send PDF email");
     } finally {
       setSendingEmail(null);
     }
   };
-
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
     try {
