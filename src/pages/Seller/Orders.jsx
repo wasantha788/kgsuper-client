@@ -76,8 +76,8 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-  const sendEmailReceipt = async (order) => {
-  // Directly pull from storage to ensure we have the latest token
+             const sendEmailReceipt = async (order) => {
+  // 1. Get the token directly from localStorage
   const activeToken = localStorage.getItem("sellerToken"); 
 
   if (!activeToken) {
@@ -93,7 +93,7 @@ const Orders = () => {
     const pdfBase64 = doc.output('datauristring').split(',')[1];
 
     const { data } = await axios.post(
-      "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
+      "/api/order/send-receipt", 
       {
         email: order.address.email,
         pdfData: pdfBase64,
@@ -101,7 +101,7 @@ const Orders = () => {
       },
       {
         headers: {
-          // This is what the authSeller middleware is looking for!
+          // 2. This replaces 'Bearer undefined' with the real token
           Authorization: `Bearer ${activeToken}` 
         }
       }
