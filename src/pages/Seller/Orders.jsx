@@ -58,7 +58,7 @@ const Orders = () => {
     if (!user?._id) return;
     setLoading(true);
     try {
-      const { data } = await axios.get("/api/order/seller", {
+      const { data } = await axios.get("https://kgsuper-server-production.up.railway.app/api/order/send-receipt",{
         headers: { Authorization: `Bearer ${token}` },
       });
       if (data.success) setOrders(data.orders || []);
