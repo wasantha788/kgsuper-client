@@ -76,11 +76,9 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-          const sendEmailReceipt = async (order) => {
-  // Since you are using 'axios' from useAppContext, it already uses withCredentials: true
-  // and we will pass the headers explicitly just to be safe.
-  
-  const activeToken = localStorage.getItem("sellerToken");
+  const sendEmailReceipt = async (order) => {
+  // Directly pull from storage to ensure we have the latest token
+  const activeToken = localStorage.getItem("sellerToken"); 
 
   if (!activeToken) {
     toast.error("Seller session not found. Please log in again.");
@@ -91,24 +89,28 @@ const Orders = () => {
 
   try {
     const doc = new jsPDF();
-    // ... your PDF generation logic ...
+    // ... (Your PDF logic) ...
     const pdfBase64 = doc.output('datauristring').split(',')[1];
 
     const { data } = await axios.post(
-      "https://kgsuper-server-production.up.railway.app/api/order/send-receipt", // Use relative path since baseURL is set
+      "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
       {
         email: order.address.email,
         pdfData: pdfBase64,
         fileName: `Receipt_${order._id}.pdf`
       },
       {
-        headers: { Authorization: `Bearer ${activeToken}` }
+        headers: {
+          // This is what the authSeller middleware is looking for!
+          Authorization: `Bearer ${activeToken}` 
+        }
       }
     );
 
-    if (data.success) toast.success("PDF Receipt sent!");
+    if (data.success) toast.success("PDF Receipt sent to customer!");
   } catch (err) {
-    toast.error(err.response?.data?.message || "Email failed");
+    console.error("Email Error:", err);
+    toast.error(err.response?.data?.message || "Failed to send email");
   } finally {
     setSendingEmail(null);
   }
