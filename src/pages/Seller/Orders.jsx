@@ -76,43 +76,64 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-             const sendEmailReceipt = async (order) => {
-  // 1. Get the token directly from localStorage
-  const activeToken = localStorage.getItem("sellerToken"); 
-
-  if (!activeToken) {
-    toast.error("Seller session not found. Please log in again.");
-    return;
-  }
-
-  setSendingEmail(order._id);
-
+   const sendEmailReceipt = async (order) => {
   try {
-    const doc = new jsPDF();
-    // ... (Your PDF logic) ...
-    const pdfBase64 = doc.output('datauristring').split(',')[1];
+    if (!order?.address?.email) {
+      alert("Customer email not found.");
+      return;
+    }
 
-    const { data } = await axios.post(
-      "/api/order/send-receipt", 
+    // 1️⃣ Generate PDF
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Order Receipt", 20, 20);
+
+    doc.setFontSize(12);
+    doc.text(`Order ID: ${order._id}`, 20, 40);
+    doc.text(`Customer: ${order.address.name}`, 20, 50);
+    doc.text(`Email: ${order.address.email}`, 20, 60);
+    doc.text(`Phone: ${order.address.phone}`, 20, 70);
+    doc.text(`Address: ${order.address.street}`, 20, 80);
+
+    doc.text(`Total Amount: ₹${order.amount}`, 20, 100);
+    doc.text(`Payment Method: ${order.paymentMethod}`, 20, 110);
+    doc.text(`Date: ${new Date(order.date).toLocaleString()}`, 20, 120);
+
+    // 2️⃣ Convert to Base64 (REMOVE data prefix!)
+    const pdfBase64 = doc.output("datauristring").split(",")[1];
+
+    // 3️⃣ Get seller token
+    const sellerToken = localStorage.getItem("sellerToken");
+
+    if (!sellerToken) {
+      alert("Seller not authenticated.");
+      return;
+    }
+
+    // 4️⃣ Send to backend
+    const response = await axios.post(
+      "/api/order/send-receipt",
       {
         email: order.address.email,
         pdfData: pdfBase64,
-        fileName: `Receipt_${order._id}.pdf`
+        fileName: `Receipt_${order._id}.pdf`,
       },
       {
         headers: {
-          // 2. This replaces 'Bearer undefined' with the real token
-          Authorization: `Bearer ${activeToken}` 
-        }
+          Authorization: `Bearer ${sellerToken}`,
+        },
       }
     );
 
-    if (data.success) toast.success("PDF Receipt sent to customer!");
-  } catch (err) {
-    console.error("Email Error:", err);
-    toast.error(err.response?.data?.message || "Failed to send email");
-  } finally {
-    setSendingEmail(null);
+    if (response.data.success) {
+      alert("Receipt emailed successfully!");
+    } else {
+      alert("Failed to send receipt.");
+    }
+
+  } catch (error) {
+    console.error("Send Receipt Error:", error.response?.data || error.message);
+    alert("Error sending receipt.");
   }
 };
    
