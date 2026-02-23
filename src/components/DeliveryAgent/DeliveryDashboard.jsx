@@ -125,7 +125,9 @@ const DeliveryDashboard = () => {
     setOrders((prev) => prev.filter((o) => o._id !== orderId));
   };
 
-         const markAsPaid = async (orderId) => {
+
+
+  const markAsPaid = async (orderId) => {
   try {
     // 1. Double check the key name in your login logic! 
     const token = localStorage.getItem("deliveryToken"); 
@@ -158,6 +160,7 @@ const DeliveryDashboard = () => {
     toast.error(err.message);
   }
 };
+
   const verifyOtp = async () => {
     if (emailOtp.length < 4) return toast.error("Enter valid OTP");
 
