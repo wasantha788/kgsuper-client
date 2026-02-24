@@ -79,39 +79,47 @@ const DeliveryDashboard = () => {
   const [otpOrderId, setOtpOrderId] = useState(null);
   const [verifying, setVerifying] = useState(false);
 
-  useEffect(() => {
-    if (!user?._id) return;
+  
+  /* ---------------- UPDATED SOCKET LISTENERS ---------------- */
+useEffect(() => {
+  if (!user?._id) return;
 
-    // Use environment variable or fallback to context URL
-    const socket = io(import.meta.env.VITE_BACKEND_URL || backendUrl, {
-      transports: ["websocket"],
-      withCredentials: true,
+  const socket = io(import.meta.env.VITE_BACKEND_URL || backendUrl, {
+    transports: ["websocket"],
+    withCredentials: true,
+  });
+
+  socketRef.current = socket;
+
+  socket.on("connect", () => {
+    socket.emit("registerDeliveryBoy", user._id);
+  });
+
+  // This handles the initial load and your 1-second safety refresh
+  socket.on("myOrders", (data) => {
+    setOrders(data);
+    setLoading(false);
+  });
+
+  // This handles INSTANT new broadcasts from the server
+  socket.on("newDeliveryOrder", (newOrder) => {
+    setOrders((prev) => {
+      // Check if order already exists to prevent duplicates
+      const exists = prev.find(o => o._id === newOrder._id);
+      if (exists) return prev;
+      
+      // Add new order to the top of the list immediately
+      return [newOrder, ...prev];
     });
+    toast.success("New delivery request nearby! 🚴", { icon: '📦' });
+  });
 
-    socketRef.current = socket;
+  return () => {
+    if (socketRef.current) socketRef.current.disconnect();
+  };
+}, [user?._id, backendUrl]);
 
-    socket.on("connect", () => {
-        socket.emit("registerDeliveryBoy", user._id);
-    });
 
-    socket.on("myOrders", (data) => {
-      setOrders(data);
-      setLoading(false);
-    });
-
-    socket.on("newDeliveryOrder", (order) => {
-      setOrders((prev) => prev.some((o) => o._id === order._id) ? prev : [order, ...prev]);
-      toast.success("New delivery request nearby! 🚴", { icon: '📦' });
-    });
-
-    socket.on("orderUpdated", (updated) => {
-      setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)));
-    });
-
-    return () => {
-        if (socketRef.current) socketRef.current.disconnect();
-    };
-  }, [user, backendUrl]);
 
   const acceptOrder = (orderId) => {
     if (!socketRef.current) return;
