@@ -114,17 +114,8 @@ const DeliveryDashboard = () => {
       setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)));
     });
 
-    // 5-MINUTE SAFETY REFRESH (300,000 ms)
-    const interval = setInterval(() => {
-        if (socketRef.current && socketRef.current.connected) {
-          socketRef.current.emit("registerDeliveryBoy", user._id);
-        }
-    }, 300000);
 
-    return () => {
-        if (socketRef.current) socketRef.current.disconnect();
-        clearInterval(interval);
-    };
+  
   }, [user?._id, backendUrl]);
 
   const acceptOrder = (orderId) => {
