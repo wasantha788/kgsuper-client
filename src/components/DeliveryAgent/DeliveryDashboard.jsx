@@ -128,7 +128,11 @@ const DeliveryDashboard = () => {
     socketRef.current.emit("reject-order", { orderId, deliveryBoyId: user._id });
     setOrders((prev) => prev.filter((o) => o._id !== orderId));
   };
-
+   // Add this inside your useEffect in DeliveryDashboard.jsx
+socket.on("orderTimedOut", (orderId) => {
+  setOrders((prev) => prev.filter((o) => o._id !== orderId));
+  toast.error("An order is no longer available.");
+});
 
 
   const markAsPaid = async (orderId) => {
