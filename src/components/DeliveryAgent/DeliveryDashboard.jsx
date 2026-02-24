@@ -194,18 +194,7 @@ const DeliveryDashboard = () => {
     }
   };
 
-useEffect(() => {
-  if (!user?._id) return;
 
-  const interval = setInterval(() => {
-    // Only emit if the socket exists and is actually connected
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit("registerDeliveryBoy", user._id);
-    }
-  }, 1000);
-
-  return () => clearInterval(interval);
-}, [user?._id]);
   // Helper logic to categorize orders
   // DeliveryDashboard.jsx - around line 145
 const myOrders = orders.filter(o => 
