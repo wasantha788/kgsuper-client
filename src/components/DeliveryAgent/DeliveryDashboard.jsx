@@ -79,7 +79,16 @@ const DeliveryDashboard = () => {
   const [otpOrderId, setOtpOrderId] = useState(null);
   const [verifying, setVerifying] = useState(false);
 
-  // SOCKETS & REFRESH LOGIC
+  // Manual Refresh Function
+  const handleManualRefresh = () => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("registerDeliveryBoy", user._id);
+      toast("Syncing live data...", { icon: '🔄', duration: 1000 });
+    } else {
+      toast.error("Not connected to server");
+    }
+  };
+
   useEffect(() => {
     if (!user?._id) return;
 
@@ -99,14 +108,9 @@ const DeliveryDashboard = () => {
       setLoading(false);
     });
 
-    // INSTANT REFRESH ON NEW ORDER
     socket.on("newDeliveryOrder", (order) => {
-      // 1. Immediately request a full data refresh from server
-      socket.emit("registerDeliveryBoy", user._id); 
-      
-      // 2. Optimistically add it to UI while waiting for refresh
+      // Auto-update the list when a broadcast arrives
       setOrders((prev) => prev.some((o) => o._id === order._id) ? prev : [order, ...prev]);
-      
       toast.success("New delivery request nearby! 🚴", { icon: '📦' });
     });
 
@@ -114,8 +118,9 @@ const DeliveryDashboard = () => {
       setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)));
     });
 
-
-  
+    return () => {
+        if (socketRef.current) socketRef.current.disconnect();
+    };
   }, [user?._id, backendUrl]);
 
   const acceptOrder = (orderId) => {
@@ -132,20 +137,13 @@ const DeliveryDashboard = () => {
 
   const markAsPaid = async (orderId) => {
     try {
-      const token = localStorage.getItem("deliveryToken"); 
-      if (!token) {
-        toast.error("Session expired. Please log in again.");
-        return;
-      }
+      const token = localStorage.getItem("deliveryToken");
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/delivery/order/${orderId}/send-payment-otp`, {
         method: "POST",
-        headers: { 
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json" 
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || `Server responded with ${res.status}`);
+      if (!res.ok) throw new Error(data.message);
       setOtpOrderId(orderId);
       setShowOtpModal(true);
       toast.success("OTP sent to customer's email");
@@ -163,7 +161,7 @@ const DeliveryDashboard = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ otp: emailOtp }),
       });
@@ -198,17 +196,21 @@ const DeliveryDashboard = () => {
   return (
     <div className="max-w-4xl mx-auto p-4 pb-24">
       <header className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-black text-gray-800 tracking-tight">DELIVERY FEED 🚐</h2>
-        <div className="flex items-center gap-2">
-            <button 
-                onClick={() => socketRef.current.emit("registerDeliveryBoy", user._id)}
-                className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"
-                title="Manual Refresh"
-            >
-                🔄
-            </button>
-            <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black animate-pulse">LIVE CONNECTED</div>
+        <div>
+            <h2 className="text-2xl font-black text-gray-800 tracking-tight">DELIVERY FEED 🚐</h2>
+            <div className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-black inline-block mt-1 uppercase tracking-wider animate-pulse">
+                Live Connected
+            </div>
         </div>
+        
+        {/* REFRESH BUTTON */}
+        <button 
+            onClick={handleManualRefresh}
+            className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-2xl shadow-sm hover:bg-gray-50 active:scale-95 transition-all text-sm font-bold text-gray-600"
+        >
+            <span>Refresh</span>
+            <span className="text-lg">🔄</span>
+        </button>
       </header>
 
       {/* SECTION: NEW BROADCASTS */}
@@ -260,7 +262,34 @@ const DeliveryDashboard = () => {
           ))
       )}
 
-      {/* OTP MODAL REMOVED FOR BREVITY - SAME AS YOUR ORIGINAL */}
+      {/* OTP MODAL */}
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl">
+            <h3 className="text-xl font-black text-center mb-2">Verify Payment</h3>
+            <p className="text-center text-gray-500 text-sm mb-6">Ask the customer for the code sent to their email.</p>
+
+            <input
+              type="text"
+              maxLength="6"
+              value={emailOtp}
+              onChange={(e) => setEmailOtp(e.target.value)}
+              className="w-full border-2 border-gray-100 bg-gray-50 px-4 py-4 rounded-2xl text-center text-2xl font-black tracking-[0.5em] focus:border-blue-500 outline-none transition-all"
+              placeholder="0000"
+            />
+
+            <button
+              onClick={verifyOtp}
+              disabled={verifying}
+              className="w-full mt-6 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100 disabled:opacity-50"
+            >
+              {verifying ? "Checking..." : "Confirm Payment"}
+            </button>
+
+            <button onClick={() => setShowOtpModal(false)} className="w-full mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
