@@ -67,7 +67,7 @@ const OrderPreview = ({ order, currency }) => {
 
 /* ---------------- MAIN DASHBOARD ---------------- */
 const DeliveryDashboard = () => {
-  const { user, currency, backendUrl } = useAppContext(); // Recommended to put URL in context
+  const { user, currency, backendUrl } = useAppContext();
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
@@ -82,7 +82,6 @@ const DeliveryDashboard = () => {
   useEffect(() => {
     if (!user?._id) return;
 
-    // Use environment variable or fallback to context URL
     const socket = io(import.meta.env.VITE_BACKEND_URL || backendUrl, {
       transports: ["websocket"],
       withCredentials: true,
@@ -99,7 +98,7 @@ const DeliveryDashboard = () => {
       setLoading(false);
     });
 
-   socket.on("newDeliveryOrder", (newOrder) => {
+    socket.on("newDeliveryOrder", (newOrder) => {
       setOrders((prev) => {
         const exists = prev.find(o => o._id === newOrder._id);
         if (exists) return prev;
@@ -112,10 +111,18 @@ const DeliveryDashboard = () => {
       setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)));
     });
 
+    // Re-register every 5 seconds as a safety heartbeat
+    const interval = setInterval(() => {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("registerDeliveryBoy", user._id);
+      }
+    }, 5000);
+
     return () => {
         if (socketRef.current) socketRef.current.disconnect();
+        clearInterval(interval);
     };
-  }, [user, backendUrl]);
+  }, [user?._id, backendUrl]);
 
   const acceptOrder = (orderId) => {
     if (!socketRef.current) return;
@@ -128,50 +135,33 @@ const DeliveryDashboard = () => {
     socketRef.current.emit("reject-order", { orderId, deliveryBoyId: user._id });
     setOrders((prev) => prev.filter((o) => o._id !== orderId));
   };
-   // Add this inside your useEffect in DeliveryDashboard.jsx
-socket.on("orderTimedOut", (orderId) => {
-  setOrders((prev) => prev.filter((o) => o._id !== orderId));
-  toast.error("An order is no longer available.");
-});
-
 
   const markAsPaid = async (orderId) => {
-  try {
-    // 1. Double check the key name in your login logic! 
-    const token = localStorage.getItem("deliveryToken"); 
+    try {
+      const token = localStorage.getItem("deliveryToken"); 
+      if (!token) return toast.error("Session expired. Please log in again.");
 
-    if (!token) {
-      toast.error("Session expired. Please log in again.");
-      return;
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/delivery/order/${orderId}/send-payment-otp`, {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json" 
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to send OTP");
+
+      setOtpOrderId(orderId);
+      setShowOtpModal(true);
+      toast.success("OTP sent to customer's email");
+    } catch (err) {
+      toast.error(err.message);
     }
-
-    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/delivery/order/${orderId}/send-payment-otp`, {
-      method: "POST",
-      headers: { 
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json" // Added for consistency
-      },
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      // This will tell you if it's a 401 (Auth), 404 (Route), or 500 (Server Error)
-      throw new Error(data.message || `Server responded with ${res.status}`);
-    }
-
-    setOtpOrderId(orderId);
-    setShowOtpModal(true);
-    toast.success("OTP sent to customer's email");
-  } catch (err) {
-    console.error("OTP Send Error:", err);
-    toast.error(err.message);
-  }
-};
+  };
 
   const verifyOtp = async () => {
     if (emailOtp.length < 4) return toast.error("Enter valid OTP");
-
     try {
       setVerifying(true);
       const token = localStorage.getItem("deliveryToken");
@@ -179,7 +169,7 @@ socket.on("orderTimedOut", (orderId) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ otp: emailOtp }),
       });
@@ -198,20 +188,16 @@ socket.on("orderTimedOut", (orderId) => {
     }
   };
 
+  // --- DERIVED STATE (Fixed missing declarations) ---
+  const myOrders = orders.filter(o => 
+    o.assignedDeliveryBoy === user._id || o.assignedDeliveryBoy?._id === user._id
+  );
 
-  // Helper logic to categorize orders
-  // DeliveryDashboard.jsx - around line 145
-const myOrders = orders.filter(o => 
-  o.assignedDeliveryBoy === user._id || o.assignedDeliveryBoy?._id === user._id
-);
+  const pendingOrders = orders.filter(o => 
+    !o.assignedDeliveryBoy && o.status === "Out for delivery"
+  );
 
-// FIXED: Filter for orders that are "Out for delivery" but NOT YET accepted by anyone
-const pendingOrders = orders.filter(o => 
-  !o.assignedDeliveryBoy && o.status === "Out for delivery"
-);
-
-
-  if (loading) return (
+  if (loading && orders.length === 0) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
         <p className="text-gray-500 font-medium">Syncing live deliveries...</p>
