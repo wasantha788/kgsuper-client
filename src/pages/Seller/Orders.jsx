@@ -115,6 +115,7 @@ const Orders = () => {
       "/api/order/send-receipt",
       {
         email: order.address.email,
+        name: order.address.name,
         pdfData: pdfBase64,
         fileName: `Receipt_${order._id}.pdf`,
       },
