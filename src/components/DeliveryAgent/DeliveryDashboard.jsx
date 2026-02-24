@@ -189,13 +189,19 @@ const DeliveryDashboard = () => {
       setVerifying(false);
     }
   };
+       /* ---------------- REFRESH LOGIC (Optimized) ---------------- */
+useEffect(() => {
+  if (!user?._id) return;
 
-  // Helper logic to categorize orders
-  // DeliveryDashboard.jsx - around line 145
-const myOrders = orders.filter(o => 
-  o.assignedDeliveryBoy === user._id || o.assignedDeliveryBoy?._id === user._id
-);
+  const interval = setInterval(() => {
+    // Only emit if the socket exists and is actually connected
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("registerDeliveryBoy", user._id);
+    }
+  }, 1000);
 
+  return () => clearInterval(interval);
+}, [user?._id]);
 // FIXED: Filter for orders that are "Out for delivery" but NOT YET accepted by anyone
 const pendingOrders = orders.filter(o => 
   !o.assignedDeliveryBoy && o.status === "Out for delivery"
@@ -264,7 +270,9 @@ const pendingOrders = orders.filter(o =>
             </div>
           ))
       )}
+            
 
+            
       {/* OTP MODAL */}
       {showOtpModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
