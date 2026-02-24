@@ -79,30 +79,27 @@ const DeliveryDashboard = () => {
   const [otpOrderId, setOtpOrderId] = useState(null);
   const [verifying, setVerifying] = useState(false);
 
-  
-  /* ---------------- UPDATED SOCKET LISTENERS ---------------- */
-useEffect(() => {
-  if (!user?._id) return;
+  useEffect(() => {
+    if (!user?._id) return;
 
-  const socket = io(import.meta.env.VITE_BACKEND_URL || backendUrl, {
-    transports: ["websocket"],
-    withCredentials: true,
-  });
+    // Use environment variable or fallback to context URL
+    const socket = io(import.meta.env.VITE_BACKEND_URL || backendUrl, {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
 
-  socketRef.current = socket;
+    socketRef.current = socket;
 
-  socket.on("connect", () => {
-    socket.emit("registerDeliveryBoy", user._id);
-  });
+    socket.on("connect", () => {
+        socket.emit("registerDeliveryBoy", user._id);
+    });
 
-  // This handles the initial load and your 1-second safety refresh
-  socket.on("myOrders", (data) => {
-    setOrders(data);
-    setLoading(false);
-  });
+    socket.on("myOrders", (data) => {
+      setOrders(data);
+      setLoading(false);
+    });
 
-  // This handles INSTANT new broadcasts from the server
-  socket.on("newDeliveryOrder", (newOrder) => {
+   socket.on("newDeliveryOrder", (newOrder) => {
     setOrders((prev) => {
       // Check if order already exists to prevent duplicates
       const exists = prev.find(o => o._id === newOrder._id);
@@ -114,12 +111,17 @@ useEffect(() => {
     toast.success("New delivery request nearby! 🚴", { icon: '📦' });
   });
 
-  return () => {
-    if (socketRef.current) socketRef.current.disconnect();
-  };
-}, [user?._id, backendUrl]);
+    socket.on("orderUpdated", (updated) => {
+      setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)));
+    });
+
+    return () => {
+        if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, [user, backendUrl]);
 
 
+  
 
   const acceptOrder = (orderId) => {
     if (!socketRef.current) return;
