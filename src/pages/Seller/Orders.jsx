@@ -186,7 +186,26 @@ const Orders = () => {
       );
       toast.success(`✅ Order accepted by ${deliveryBoy.name}`);
     });
+    // --- Update this listener in your Seller Dashboard useEffect ---
+socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
+  // Stop the 20s timer
+  setCountdowns((prev) => {
+    const updated = { ...prev };
+    delete updated[orderId];
+    return updated;
+  });
 
+  // Update the local state so the UI changes immediately
+  setOrders((prev) =>
+    prev.map((o) =>
+      o._id === orderId
+        ? { ...o, assignedDeliveryBoy: deliveryBoy, status: status }
+        : o
+    )
+  );
+  toast.success(`✅ Order accepted by ${deliveryBoy.name}`);
+  
+});
     socket.on("orderUnaccepted", (orderId) => {
       setCountdowns((prev) => {
         const updated = { ...prev };

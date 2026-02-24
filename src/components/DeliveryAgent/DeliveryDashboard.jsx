@@ -118,6 +118,11 @@ const DeliveryDashboard = () => {
       setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)));
     });
 
+    // --- Add this listener in your Delivery Dashboard useEffect ---
+    socket.on("orderRemoved", ({ orderId }) => {
+      setOrders((prev) => prev.filter((o) => o._id !== orderId));
+    });
+
     return () => {
         if (socketRef.current) socketRef.current.disconnect();
     };
@@ -128,6 +133,7 @@ const DeliveryDashboard = () => {
     socketRef.current.emit("accept-order", { orderId, deliveryBoyId: user._id });
     toast.success("Order accepted!");
   };
+  
 
   const rejectOrder = (orderId) => {
     if (!socketRef.current) return;
