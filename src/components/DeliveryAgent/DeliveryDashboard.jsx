@@ -99,12 +99,8 @@ const DeliveryDashboard = () => {
       setLoading(false);
     });
 
-   socket.on("newDeliveryOrder", (newOrder) => {
-      setOrders((prev) => {
-        const exists = prev.find(o => o._id === newOrder._id);
-        if (exists) return prev;
-        return [newOrder, ...prev];
-      });
+    socket.on("newDeliveryOrder", (order) => {
+      setOrders((prev) => prev.some((o) => o._id === order._id) ? prev : [order, ...prev]);
       toast.success("New delivery request nearby! 🚴", { icon: '📦' });
     });
 
@@ -193,26 +189,19 @@ const DeliveryDashboard = () => {
       setVerifying(false);
     }
   };
-
-
-<header className="flex justify-between items-center mb-8">
-  <h2 className="text-2xl font-black text-gray-800 tracking-tight">DELIVERY FEED 🚐</h2>
   
-  <div className="flex items-center gap-3">
-    {/* Manual Refresh Button */}
-    <button 
-      onClick={() => socketRef.current?.emit("registerDeliveryBoy", user._id)}
-      className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-all active:scale-90"
-      title="Refresh Feed"
-    >
-      <span className="text-lg">🔄</span>
-    </button>
-    
-    <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black animate-pulse">
-      LIVE
-    </div>
-  </div>
-</header>
+useEffect(() => {
+  if (!user?._id) return;
+
+  const interval = setInterval(() => {
+    // Only emit if the socket exists and is actually connected
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("registerDeliveryBoy", user._id);
+    }
+  }, 5000);
+
+  return () => clearInterval(interval);
+}, [user?._id]);
   // Helper logic to categorize orders
   // DeliveryDashboard.jsx - around line 145
 const myOrders = orders.filter(o => 
