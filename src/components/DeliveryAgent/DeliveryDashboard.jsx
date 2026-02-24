@@ -190,7 +190,7 @@ const DeliveryDashboard = () => {
     const interval = setInterval(() => {
       // Only emit if the socket exists and is actually connected
       if (socketRef.current && socketRef.current.connected) {
-        console.log("5-minute refresh triggered"); // For debugging
+        console.log("10 seconds refresh triggered"); // For debugging
         socketRef.current.emit("registerDeliveryBoy", user._id);
       }
     }, 10000); 
