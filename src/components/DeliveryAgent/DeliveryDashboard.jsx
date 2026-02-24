@@ -100,16 +100,13 @@ const DeliveryDashboard = () => {
     });
 
    socket.on("newDeliveryOrder", (newOrder) => {
-    setOrders((prev) => {
-      // Check if order already exists to prevent duplicates
-      const exists = prev.find(o => o._id === newOrder._id);
-      if (exists) return prev;
-      
-      // Add new order to the top of the list immediately
-      return [newOrder, ...prev];
+      setOrders((prev) => {
+        const exists = prev.find(o => o._id === newOrder._id);
+        if (exists) return prev;
+        return [newOrder, ...prev];
+      });
+      toast.success("New delivery request nearby! 🚴", { icon: '📦' });
     });
-    toast.success("New delivery request nearby! 🚴", { icon: '📦' });
-  });
 
     socket.on("orderUpdated", (updated) => {
       setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)));
@@ -119,9 +116,6 @@ const DeliveryDashboard = () => {
         if (socketRef.current) socketRef.current.disconnect();
     };
   }, [user, backendUrl]);
-
-
-  
 
   const acceptOrder = (orderId) => {
     if (!socketRef.current) return;
@@ -200,6 +194,24 @@ const DeliveryDashboard = () => {
     }
   };
 
+useEffect(() => {
+  if (!user?._id) return;
+
+  const interval = setInterval(() => {
+    // Only emit if the socket exists and is actually connected
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("registerDeliveryBoy", user._id);
+    }
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [user?._id]);
+  // Helper logic to categorize orders
+  // DeliveryDashboard.jsx - around line 145
+const myOrders = orders.filter(o => 
+  o.assignedDeliveryBoy === user._id || o.assignedDeliveryBoy?._id === user._id
+);
+
 // FIXED: Filter for orders that are "Out for delivery" but NOT YET accepted by anyone
 const pendingOrders = orders.filter(o => 
   !o.assignedDeliveryBoy && o.status === "Out for delivery"
@@ -268,8 +280,6 @@ const pendingOrders = orders.filter(o =>
             </div>
           ))
       )}
-            
-
             
       {/* OTP MODAL */}
       {showOtpModal && (
