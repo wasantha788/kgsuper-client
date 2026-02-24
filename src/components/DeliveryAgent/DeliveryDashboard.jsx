@@ -184,6 +184,20 @@ const DeliveryDashboard = () => {
     }
   };
 
+  useEffect(() => {
+    if (!user?._id) return;
+
+    const interval = setInterval(() => {
+      // Only emit if the socket exists and is actually connected
+      if (socketRef.current && socketRef.current.connected) {
+        console.log("5-minute refresh triggered"); // For debugging
+        socketRef.current.emit("registerDeliveryBoy", user._id);
+      }
+    }, 10000); 
+
+    return () => clearInterval(interval);
+  }, [user?._id]);
+
   const myOrders = orders.filter(o => 
     o.assignedDeliveryBoy === user._id || o.assignedDeliveryBoy?._id === user._id
   );

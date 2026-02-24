@@ -204,7 +204,7 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
     )
   );
   toast.success(`✅ Order accepted by ${deliveryBoy.name}`);
-  
+
 });
     socket.on("orderUnaccepted", (orderId) => {
       setCountdowns((prev) => {
@@ -267,6 +267,20 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
     } catch (err) { toast.error("Failed to update status"); }
     finally { setProcessingOrders((prev) => prev.filter((id) => id !== orderId)); }
   };
+   
+useEffect(() => {
+    if (!user?._id) return;
+
+    const interval = setInterval(() => {
+      // Only emit if the socket exists and is actually connected
+      if (socketRef.current && socketRef.current.connected) {
+        console.log("5-minute refresh triggered"); // For debugging
+        socketRef.current.emit("registerDeliveryBoy", user._id);
+      }
+    }, 10000); 
+
+    return () => clearInterval(interval);
+  }, [user?._id]);
 
    const sendToDelivery = async (order) => {
   if (!socketRef.current || processingOrders.includes(order._id)) return;
