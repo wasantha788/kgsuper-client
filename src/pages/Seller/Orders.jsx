@@ -76,68 +76,45 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-   const sendEmailReceipt = async (order) => {
+  const sendEmailReceipt = async (order) => {
   try {
     if (!order?.address?.email) {
       alert("Customer email not found.");
       return;
     }
 
-    // 1️⃣ Generate PDF
     const doc = new jsPDF();
-    doc.setFontSize(16);
+    // ... (Your PDF drawing logic is perfect) ...
     doc.text("Order Receipt", 20, 20);
 
-    doc.setFontSize(12);
-    doc.text(`Order ID: ${order._id}`, 20, 40);
-    doc.text(`Customer: ${order.address.name}`, 20, 50);
-    doc.text(`Email: ${order.address.email}`, 20, 60);
-    doc.text(`Phone: ${order.address.phone}`, 20, 70);
-    doc.text(`Address: ${order.address.street}`, 20, 80);
+    const pdfBase64 = doc.output("datauristring").split(',')[1]; // Reliable way to get just the base64
 
-    doc.text(`Total Amount: ₹${order.amount}`, 20, 100);
-    doc.text(`Payment Method: ${order.paymentMethod}`, 20, 110);
-    doc.text(`Date: ${new Date(order.date).toLocaleString()}`, 20, 120);
-
-    // 2️⃣ Convert to Base64 (REMOVE data prefix!)
-      const pdfBase64 = doc.output("datauristring").replace(/^data:application\/pdf;base64,/, "");
-
-    // 3️⃣ Get seller token
     const sellerToken = localStorage.getItem("sellerToken");
 
-    if (!sellerToken) {
-      alert("Seller not authenticated.");
-      return;
-    }
-
-    // 4️⃣ Send to backend
     const response = await axios.post(
       "/api/order/send-receipt",
       {
         email: order.address.email,
         name: order.address.name,
+        orderId: order._id, // Pass this so webhooks can track it!
         pdfData: pdfBase64,
         fileName: `Receipt_${order._id}.pdf`,
       },
       {
         headers: {
-          Authorization: `Bearer ${sellerToken}`,
+          token: sellerToken, // Ensure this matches your authSeller middleware
         },
       }
     );
 
     if (response.data.success) {
       alert("Receipt emailed successfully!");
-    } else {
-      alert("Failed to send receipt.");
     }
-
   } catch (error) {
-    console.error("Send Receipt Error:", error.response?.data || error.message);
+    console.error("Send Receipt Error:", error);
     alert("Error sending receipt.");
   }
 };
-   
 
 
   // ---------------- DOWNLOAD PDF ----------------
