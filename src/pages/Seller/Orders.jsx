@@ -191,7 +191,7 @@ const Orders = () => {
     socket.on("disconnect", () => setIsLive(false));
     socket.emit("join_seller");
 
-    socket.on("orderAcceptedByDelivery", ({ orderId, deliveryBoy }) => {
+    socket.on("orderUpdated", ({ orderId, deliveryBoy }) => {
       setCountdowns((prev) => {
         const updated = { ...prev };
         delete updated[orderId];
