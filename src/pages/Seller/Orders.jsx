@@ -100,7 +100,7 @@ const Orders = () => {
     doc.text(`Date: ${new Date(order.date).toLocaleString()}`, 20, 120);
 
     // 2️⃣ Convert to Base64 (REMOVE data prefix!)
-    const pdfBase64 = doc.output("datauristring").split(",")[1];
+      const pdfBase64 = doc.output("datauristring").replace(/^data:application\/pdf;base64,/, "");
 
     // 3️⃣ Get seller token
     const sellerToken = localStorage.getItem("sellerToken");
