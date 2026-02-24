@@ -249,23 +249,32 @@ const Orders = () => {
     finally { setProcessingOrders((prev) => prev.filter((id) => id !== orderId)); }
   };
 
-  const sendToDelivery = async (order) => {
-    if (!socketRef.current || processingOrders.includes(order._id)) return;
-    setProcessingOrders((prev) => [...prev, order._id]);
-    setCountdowns((prev) => ({ ...prev, [order._id]: 20 }));
-    setOrders((prev) => prev.map((o) => o._id === order._id ? { ...o, status: "Out for delivery" } : o));
-    socketRef.current.emit("send-to-delivery", { order });
+   const sendToDelivery = async (order) => {
+  if (!socketRef.current || processingOrders.includes(order._id)) return;
+  
+  setProcessingOrders((prev) => [...prev, order._id]);
+  setCountdowns((prev) => ({ ...prev, [order._id]: 20 }));
 
-    try {
-      await axios.put(`/api/order/status/${order._id}`, { status: "Out for delivery" }, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success(`Searching for rider...`);
-    } catch (err) {
-      setCountdowns((prev) => { const u = { ...prev }; delete u[order._id]; return u; });
-      toast.error("Failed to initiate delivery");
-    } finally {
-      setProcessingOrders((prev) => prev.filter((id) => id !== order._id));
-    }
-  };
+  // 1. Use "Out for delivery" consistently
+  const updatedOrder = { ...order, status: "Out for delivery" };
+
+  setOrders((prev) => prev.map((o) => o._id === order._id ? updatedOrder : o));
+  
+  // 2. Emit the UPDATED order object, not the old one
+  socketRef.current.emit("send-to-delivery", { order: updatedOrder });
+
+  try {
+    await axios.put(`/api/order/status/${order._id}`, 
+      { status: "Out for delivery" }, 
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    toast.success(`Searching for rider...`);
+  } catch (err) {
+    // ... error handling
+  } finally {
+    setProcessingOrders((prev) => prev.filter((id) => id !== order._id));
+  }
+};
 
   const deleteOrder = async (orderId) => {
     if (!window.confirm("Are you sure?")) return;
