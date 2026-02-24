@@ -199,19 +199,7 @@ const DeliveryDashboard = () => {
       setVerifying(false);
     }
   };
-       /* ---------------- REFRESH LOGIC (Optimized) ---------------- */
-useEffect(() => {
-  if (!user?._id) return;
 
-  const interval = setInterval(() => {
-    // Only emit if the socket exists and is actually connected
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit("registerDeliveryBoy", user._id);
-    }
-  }, 1000);
-
-  return () => clearInterval(interval);
-}, [user?._id]);
 // FIXED: Filter for orders that are "Out for delivery" but NOT YET accepted by anyone
 const pendingOrders = orders.filter(o => 
   !o.assignedDeliveryBoy && o.status === "Out for delivery"
