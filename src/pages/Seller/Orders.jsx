@@ -327,45 +327,108 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
     } catch (err) { toast.error("Delete failed"); }
   };
 
-  return (
-    <div className="flex-1 min-h-screen bg-gray-50 py-6 overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-4 md:px-10">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <div className="flex items-center gap-4">
-            <h2 className="text-3xl font-bold text-gray-800">Seller Orders</h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-white border rounded-full shadow-sm">
-              <div className={`w-2.5 h-2.5 rounded-full ${isLive ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
-              <span className="text-xs font-medium text-gray-600">{isLive ? "Live" : "Offline"}</span>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={downloadPaidPDF} className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 font-semibold text-sm transition-all">Download Paid PDF</button>
-            <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-sm font-semibold">Refresh</button>
+ return (
+  <div className="bg-gray-50 pt-2 pb-6 min-h-screen">
+    <div className="max-w-6xl mx-auto px-4 md:px-10">
+      {/* Header: Title + Live Indicator + Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-3xl font-bold text-gray-800">Seller Orders</h2>
+          <div className="flex items-center gap-2 px-3 py-1 bg-white border rounded-full shadow-sm">
+            <div
+              className={`w-2.5 h-2.5 rounded-full ${
+                isLive ? "bg-green-500 animate-pulse" : "bg-red-500"
+              }`}
+            ></div>
+            <span className="text-xs font-medium text-gray-600">
+              {isLive ? "Live" : "Offline"}
+            </span>
           </div>
         </div>
-          <div ref={containerRef} className="flex-1 min-h-screen bg-gray-50 py-6 overflow-y-auto"></div>
-        <div className="space-y-6">
-          {orders.map((order) => (
-            <div key={order._id} className={`p-6 bg-white rounded-xl border shadow-md flex flex-col md:flex-row gap-6 justify-between ${order.status === "Cancelled" ? "border-red-400 bg-red-50 opacity-80" : "border-gray-200"}`}>
-              <div className="flex-1 space-y-4">
-                <div className="flex items-center gap-3">
-                  <p className="text-gray-600 text-sm">Order ID: <span className="font-bold text-gray-800">{order._id}</span></p>
-                  <button onClick={() => copyOrderId(order._id)} className="text-blue-500 text-xs font-bold uppercase">{copiedOrderId === order._id ? "Copied!" : "Copy"}</button>
-                  <span className={`px-2 py-0.5 text-[10px] font-black rounded border ${getPaymentStyle(order.paymentType)}`}>
-                    {order.paymentType?.toUpperCase() || "ONLINE"}
-                  </span>
+
+        <div className="flex gap-3">
+          <button
+            onClick={downloadPaidPDF}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 font-semibold text-sm transition-all"
+          >
+            Download Paid PDF
+          </button>
+          <button
+            onClick={fetchOrders}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-sm font-semibold"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Orders List */}
+      <div
+        ref={containerRef}
+        className="space-y-6 overflow-y-auto max-h-[calc(100vh-100px)]"
+      >
+        {orders.map((order) => (
+          <div
+            key={order._id}
+            className={`p-6 bg-white rounded-xl border shadow-md flex flex-col md:flex-row gap-6 justify-between ${
+              order.status === "Cancelled"
+                ? "border-red-400 bg-red-50 opacity-80"
+                : "border-gray-200"
+            }`}
+          >
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center gap-3">
+                <p className="text-gray-600 text-sm">
+                  Order ID:{" "}
+                  <span className="font-bold text-gray-800">{order._id}</span>
+                </p>
+                <button
+                  onClick={() => copyOrderId(order._id)}
+                  className="text-blue-500 text-xs font-bold uppercase"
+                >
+                  {copiedOrderId === order._id ? "Copied!" : "Copy"}
+                </button>
+                <span
+                  className={`px-2 py-0.5 text-[10px] font-black rounded border ${getPaymentStyle(
+                    order.paymentType
+                  )}`}
+                >
+                  {order.paymentType?.toUpperCase() || "ONLINE"}
+                </span>
+              </div>
+
+              {order.items?.map((item, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 bg-gray-50 p-2 rounded"
+                >
+                  <img
+                    src={item.product?.image?.[0] || assets.box_icon}
+                    className="w-16 h-16 rounded object-cover"
+                    alt=""
+                  />
+                  <p className="font-medium">
+                    {item.product?.name}{" "}
+                    <span className="text-blue-600 font-bold ml-1">
+                      x{item.quantity}
+                    </span>
+                  </p>
                 </div>
-                {order.items?.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-gray-50 p-2 rounded">
-                    <img src={item.product?.image?.[0] || assets.box_icon} className="w-16 h-16 rounded object-cover" alt="" />
-                    <p className="font-medium">{item.product?.name} <span className="text-blue-600 font-bold ml-1">x{item.quantity}</span></p>
-                  </div>
-                ))}
-                <div className="text-sm text-gray-700">
-                  <p className="font-bold">{order.address?.firstName} {order.address?.lastName}</p>
-                  <p>{order.address?.street}, {order.address?.city}</p>
-                  <p className="text-blue-600 font-medium italic">{order.address?.email}</p>
-                </div>
+              ))}
+
+              <div className="text-sm text-gray-700">
+                <p className="font-bold">
+                  {order.address?.firstName} {order.address?.lastName}
+                </p>
+                <p>
+                  {order.address?.street}, {order.address?.city}
+                </p>
+                <p className="text-blue-600 font-medium italic">
+                  {order.address?.email}
+                </p>
+              </div>
+
+
                 {/* DELIVERY BOY INFO */}
                 {order.assignedDeliveryBoy && (
                   <div className="p-2 mt-1 bg-green-50 border rounded text-sm text-gray-700">
