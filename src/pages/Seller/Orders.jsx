@@ -268,9 +268,8 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
     finally { setProcessingOrders((prev) => prev.filter((id) => id !== orderId)); }
   };
    
-   useEffect(() => {
-  const container = document.getElementById("orders-container");
-
+  useEffect(() => {
+  const container = containerRef.current;
   if (!container) return;
 
   const handleScroll = () => {
@@ -283,6 +282,12 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
   container.addEventListener("scroll", handleScroll);
   return () => container.removeEventListener("scroll", handleScroll);
 }, [user]);
+
+ const handleSendEmail = async (order) => {
+  setSendingEmail(order._id);
+  await sendEmailReceipt(order);
+  setSendingEmail(null);
+};
 
    const sendToDelivery = async (order) => {
   if (!socketRef.current || processingOrders.includes(order._id)) return;
@@ -338,15 +343,7 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
             <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-sm font-semibold">Refresh</button>
           </div>
         </div>
-        <div
-          id="orders-container"
-          className="flex-1 min-h-screen bg-gray-50 py-6 overflow-y-auto"
-        >
-          <div className="max-w-6xl mx-auto px-4 md:px-10">
-            {/* ... rest of your UI ... */}
-          </div>
-        </div>
-
+          <div ref={containerRef} className="flex-1 min-h-screen bg-gray-50 py-6 overflow-y-auto"></div>
         <div className="space-y-6">
           {orders.map((order) => (
             <div key={order._id} className={`p-6 bg-white rounded-xl border shadow-md flex flex-col md:flex-row gap-6 justify-between ${order.status === "Cancelled" ? "border-red-400 bg-red-50 opacity-80" : "border-gray-200"}`}>
@@ -400,7 +397,7 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
                   {/* 1. EMAIL RECEIPT BUTTON: Shows if paid, else shows pending label */}
                   {order.isPaid ? (
                     <button
-                      onClick={() => sendEmailReceipt(order)}
+                      onClick={() => handleSendEmail(order)}
                       disabled={sendingEmail === order._id}
                       className="w-full py-1.5 bg-green-600 text-white text-xs font-bold rounded hover:bg-green-700 transition-colors"
                     >
@@ -430,11 +427,6 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
                         🚀 SEND TO DELIVERY
                       </button>
                     )
-                  )}
-                  {loading && (
-                    <div className="text-center text-blue-600 font-semibold mb-2">
-                      🔄 Refreshing orders...
-                    </div>
                   )}
 
                   {/* 3. DELETE BUTTON */}
