@@ -268,19 +268,21 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
     finally { setProcessingOrders((prev) => prev.filter((id) => id !== orderId)); }
   };
    
-useEffect(() => {
-    if (!user?._id) return;
+   useEffect(() => {
+  const container = document.getElementById("orders-container");
 
-    const interval = setInterval(() => {
-      // Only emit if the socket exists and is actually connected
-      if (socketRef.current && socketRef.current.connected) {
-        console.log("5-minute refresh triggered"); // For debugging
-        socketRef.current.emit("registerDeliveryBoy", user._id);
-      }
-    }, 10000); 
+  if (!container) return;
 
-    return () => clearInterval(interval);
-  }, [user?._id]);
+  const handleScroll = () => {
+    if (container.scrollTop === 0) {
+      console.log("Scrolled to top — refreshing orders");
+      fetchOrders();
+    }
+  };
+
+  container.addEventListener("scroll", handleScroll);
+  return () => container.removeEventListener("scroll", handleScroll);
+}, [user]);
 
    const sendToDelivery = async (order) => {
   if (!socketRef.current || processingOrders.includes(order._id)) return;
@@ -334,6 +336,14 @@ useEffect(() => {
           <div className="flex gap-3">
             <button onClick={downloadPaidPDF} className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 font-semibold text-sm transition-all">Download Paid PDF</button>
             <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-sm font-semibold">Refresh</button>
+          </div>
+        </div>
+        <div
+          id="orders-container"
+          className="flex-1 min-h-screen bg-gray-50 py-6 overflow-y-auto"
+        >
+          <div className="max-w-6xl mx-auto px-4 md:px-10">
+            {/* ... rest of your UI ... */}
           </div>
         </div>
 
@@ -420,6 +430,11 @@ useEffect(() => {
                         🚀 SEND TO DELIVERY
                       </button>
                     )
+                  )}
+                  {loading && (
+                    <div className="text-center text-blue-600 font-semibold mb-2">
+                      🔄 Refreshing orders...
+                    </div>
                   )}
 
                   {/* 3. DELETE BUTTON */}
