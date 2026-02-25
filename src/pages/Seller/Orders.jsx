@@ -26,7 +26,7 @@ const Orders = () => {
   const [isLive, setIsLive] = useState(false);
   const [countdowns, setCountdowns] = useState({}); // Stores { orderId: seconds Remaining }
   const socketRef = useRef(null);
-  const containerRef = useRef(null);
+
   const token = user?.token;
 
   // ---------------- TIMER TICKER ----------------
@@ -268,8 +268,8 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
     finally { setProcessingOrders((prev) => prev.filter((id) => id !== orderId)); }
   };
    
-  useEffect(() => {
-  const container = containerRef.current;
+     useEffect(() => {
+  const container = document.getElementById("orders-container");
   if (!container) return;
 
   const handleScroll = () => {
