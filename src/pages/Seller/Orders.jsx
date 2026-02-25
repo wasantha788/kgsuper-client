@@ -26,7 +26,7 @@ const Orders = () => {
   const [isLive, setIsLive] = useState(false);
   const [countdowns, setCountdowns] = useState({}); // Stores { orderId: seconds Remaining }
   const socketRef = useRef(null);
-
+  const containerRef = useRef(null);
   const token = user?.token;
 
   // ---------------- TIMER TICKER ----------------
