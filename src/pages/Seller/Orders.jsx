@@ -102,7 +102,7 @@ const Orders = () => {
       },
       {
         headers: {
-          token: sellerToken, // Ensure this matches your authSeller middleware
+          Authorization: `Bearer ${sellerToken}`, // Ensure this matches your authSeller middleware
         },
       }
     );
