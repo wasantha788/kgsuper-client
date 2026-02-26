@@ -76,39 +76,40 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-         const sendEmailReceipt = async (orderId) => {
+         const sendEmailReceipt = async (order) => {
+    if (!user?.token) {
+    toast.error("You are not logged in");
+    return;
+  }
+
+  setSendingEmail(order._id);
+
   try {
-    if (!orderId) {
-      alert("Order ID is required");
-      return;
-    }
-
-    const token = localStorage.getItem("sellerToken"); // or however you store it
-
-    // Use backend server URL here
     const response = await fetch(
-      `https://kgsuper-server-production.up.railway.app/api/order/send-receipt`,
+      "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${user.token}`, // use context token
         },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId: order._id }),
       }
     );
 
     const data = await response.json();
 
     if (data.success) {
-      alert("Invoice emailed successfully!");
+      toast.success("Invoice emailed successfully!");
     } else {
-      alert("Failed to send invoice: " + data.message);
+      toast.error("Failed to send invoice: " + data.message);
       console.error(data.error);
     }
   } catch (err) {
     console.error("Send Invoice Error:", err);
-    alert("Error sending invoice");
+    toast.error("Error sending invoice");
+  } finally {
+    setSendingEmail(null);
   }
 };
 
