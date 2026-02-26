@@ -71,20 +71,27 @@ function AdminRequestTable() {
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  const handleStatusUpdate = async (id, status) => {
-    try {
-      const res = await axios.patch(`https://kgsuper-server-production.up.railway.app/api/sellerRequest/update-status/${id}`, { status });
-      if (res.data.success) {
-        toast.success(`Product ${status} successfully!`);
-        fetchRequests();
-      }
-    } catch (err) {
-      console.error("Update error:", err);
-      toast.error("Update failed");
-    }
-  };
-
   const filteredRequests = requests.filter(req => req.status === activeTab);
+
+
+  // --- Delete a product ---
+   const handleDelete = async (id) => {
+  if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+  try {
+    await axios.delete(
+      `https://kgsuper-server-production.up.railway.app/api/sellerRequest/${id}`
+    );
+
+    setRequests((prev) => prev.filter((r) => r._id !== id));
+
+    toast.success("Deleted successfully!");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to delete product.");
+  }
+};
+  
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -146,8 +153,16 @@ function AdminRequestTable() {
                     <div className="text-[10px] text-slate-400 font-bold uppercase">Qty: {req.quantity} • {req.weight}</div>
                   </td>
                   <td className="px-8 py-6 text-right flex justify-end gap-2">
-                    {activeTab!=="rejected" && <button onClick={()=>handleStatusUpdate(req._id,"rejected")} className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Reject"><XCircle className="w-5 h-5"/></button>}
-                  </td>
+                   
+                      <button
+                        onClick={() => handleDelete(req._id)}
+                        className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                        title="Reject"
+                      >
+                        <XCircle className="w-5 h-5" />
+                      </button>
+                  
+                    </td>
                 </tr>
               ))}
             </tbody>
