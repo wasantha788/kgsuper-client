@@ -146,7 +146,6 @@ function AdminRequestTable() {
                     <div className="text-[10px] text-slate-400 font-bold uppercase">Qty: {req.quantity} • {req.weight}</div>
                   </td>
                   <td className="px-8 py-6 text-right flex justify-end gap-2">
-                    {activeTab!=="approved" && <button onClick={()=>handleStatusUpdate(req._id,"approved")} className="p-2.5 bg-emerald-100 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Approve"><CheckCircle2 className="w-5 h-5"/></button>}
                     {activeTab!=="rejected" && <button onClick={()=>handleStatusUpdate(req._id,"rejected")} className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Reject"><XCircle className="w-5 h-5"/></button>}
                   </td>
                 </tr>
