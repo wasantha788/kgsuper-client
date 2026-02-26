@@ -76,23 +76,27 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-  const sendEmailReceipt = async (orderId) => {
+         const sendEmailReceipt = async (orderId) => {
   try {
     if (!orderId) {
       alert("Order ID is required");
       return;
     }
 
-    const token = localStorage.getItem("sellerToken"); // or whatever auth you use
+    const token = localStorage.getItem("sellerToken"); // or however you store it
 
-    const response = await fetch("/api/order/send-receipt", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ orderId }),
-    });
+    // Use backend server URL here
+    const response = await fetch(
+      `https://kgsuper-server-production.up.railway.app/api/order/send-receipt`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderId }),
+      }
+    );
 
     const data = await response.json();
 
