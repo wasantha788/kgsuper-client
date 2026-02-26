@@ -76,15 +76,27 @@ const Orders = () => {
   };
 
       // ---------------- GENERATE & sendEmailReceipt ----------------
-     const sendEmailReceipt = async (order) => {
-  try {
-    const sellerToken = localStorage.getItem("sellerToken");
-    if (!sellerToken) return toast.error("Seller token missing");
+         const sendEmailReceipt = async (order) => {
+  // 1. Prevent multiple clicks if already sending
+  if (sendingEmail === order._id) return;
 
+  try {
+    // 2. Retrieve the correct token
+    const sellerToken = localStorage.getItem("sellerToken");
+    if (!sellerToken) {
+      toast.error("Seller session expired. Please login again.");
+      return;
+    }
+
+    // 3. Match headers to your backend (which looks for 'token' or 'seller_token')
     const response = await axios.post(
       "/api/order/send-receipt",
       { orderId: order._id },
-      { headers: { Authorization: `Bearer ${sellerToken}` } }
+      { 
+        headers: { 
+          token: sellerToken // Use 'token' or 'seller_token' based on your middleware
+        } 
+      }
     );
 
     if (response.data.success) {
@@ -93,8 +105,10 @@ const Orders = () => {
       toast.error(response.data.message || "Failed to send receipt");
     }
   } catch (error) {
+    // 4. Improved error logging
+    const errorMessage = error.response?.data?.message || "Error sending receipt.";
     console.error("Send Receipt Error:", error.response?.data || error);
-    toast.error("Error sending receipt.");
+    toast.error(errorMessage);
   }
 };
   // ---------------- DOWNLOAD PDF ----------------
