@@ -77,10 +77,9 @@ const Orders = () => {
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
     const sendEmailReceipt = async (order) => {
-  const token = localStorage.getItem("sellerToken"); // ✅ get valid seller token
-
+  const token = localStorage.getItem('sellerToken'); // ✅ pull from localStorage
   if (!token) {
-    toast.error("You are not logged in as seller");
+    toast.error("You are not logged in");
     return;
   }
 
@@ -93,7 +92,7 @@ const Orders = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // ✅ valid token
+          Authorization: `Bearer ${token}`, // ✅ use valid JWT
         },
         body: JSON.stringify({ orderId: order._id }),
       }
