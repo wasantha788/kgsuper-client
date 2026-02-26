@@ -59,7 +59,7 @@ const Orders = () => {
     setLoading(true);
     try {
       const { data } = await axios.get("/api/order/seller", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${sellerToken}` },
       });
       if (data.success) setOrders(data.orders || []);
       else {
