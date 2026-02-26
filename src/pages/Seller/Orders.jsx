@@ -76,43 +76,46 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-    const sendEmailReceipt = async (order) => {
-  const token = localStorage.getItem('sellerToken'); // ✅ pull from localStorage
-  if (!token) {
-    toast.error("You are not logged in");
-    return;
-  }
-
-  setSendingEmail(order._id);
-
+  const sendEmailReceipt = async (order) => {
   try {
-    const response = await fetch(
-      "https://kgsuper-server-production.up.railway.app/api/order/send-receipt",
+    if (!order?.address?.email) {
+      alert("Customer email not found.");
+      return;
+    }
+
+    const doc = new jsPDF();
+    // ... (Your PDF drawing logic is perfect) ...
+    doc.text("Order Receipt", 20, 20);
+
+    const pdfBase64 = doc.output("datauristring").split(',')[1]; // Reliable way to get just the base64
+
+    const sellerToken = localStorage.getItem("sellerToken");
+
+    const response = await axios.post(
+      "/api/order/send-receipt",
       {
-        method: "POST",
+        email: order.address.email,
+        name: order.address.name,
+        orderId: order._id, // Pass this so webhooks can track it!
+        pdfData: pdfBase64,
+        fileName: `Receipt_${order._id}.pdf`,
+      },
+      {
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // ✅ use valid JWT
+          token: sellerToken, // Ensure this matches your authSeller middleware
         },
-        body: JSON.stringify({ orderId: order._id }),
       }
     );
 
-    const data = await response.json();
-
-    if (data.success) {
-      toast.success("Invoice emailed successfully!");
-    } else {
-      toast.error("Failed to send invoice: " + data.message);
-      console.error(data.error);
+    if (response.data.success) {
+      alert("Receipt emailed successfully!");
     }
-  } catch (err) {
-    console.error("Send Invoice Error:", err);
-    toast.error("Error sending invoice");
-  } finally {
-    setSendingEmail(null);
+  } catch (error) {
+    console.error("Send Receipt Error:", error);
+    alert("Error sending receipt.");
   }
 };
+
 
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
