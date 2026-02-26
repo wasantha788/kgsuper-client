@@ -14,11 +14,18 @@ export const AppContextProvider = ({ children }) => {
   const currency = import.meta.env.VITE_CURRENCY;
 
   // --- HELPERS ---
-  const getHeaders = () => {
-  // Check for sellerToken first, then deliveryToken
-  const token = localStorage.getItem("token") || 
-                localStorage.getItem("sellerToken") || 
-                localStorage.getItem("deliveryToken");
+  const getUserHeaders = () => {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const getSellerHeaders = () => {
+  const token = localStorage.getItem("sellerToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const getDeliveryHeaders = () => {
+  const token = localStorage.getItem("deliveryToken");
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
@@ -37,7 +44,7 @@ export const AppContextProvider = ({ children }) => {
   // ---------------- FETCH USER ----------------
   const fetchUser = async () => {
     try {
-      const { data } = await axios.get("/api/user/is-auth", { headers: getHeaders() });
+      const { data } = await axios.get("/api/user/is-auth", { headers: getUserHeaders() });
       if (data.success) {
         setUser(data.user);
         // Set state from DB - this is the "truth"
@@ -58,19 +65,20 @@ export const AppContextProvider = ({ children }) => {
 
   // ---------------- FETCH SELLER ----------------
   const fetchSeller = async () => {
-    try {
-      const { data } = await axios.get("/api/seller/is-auth");
-      setIsSeller(!!data.success);
-    } catch {
-      setIsSeller(false);
-    }
-  };
+  try {
+    const { data } = await axios.get("/api/seller/is-auth", { headers: getSellerHeaders() });
+    setIsSeller(!!data.success);
+  } catch (error) {
+    console.error("Seller auth failed", error);
+    setIsSeller(false);
+  }
+};
 
   // ---------------- FETCH DELIVERY ----------------
   const fetchdelivery = async () => {
     try {
       const { data } = await axios.get("/api/delivery/is-auth", {
-        headers: getHeaders()
+        headers: getDeliveryHeaders()
       });
       setIsdelivery(!!data.success);
       if (data.success && data.user) setUser(data.user);
@@ -82,7 +90,7 @@ export const AppContextProvider = ({ children }) => {
   // ---------------- LOGOUT ----------------
   const logout = async (nav = null, redirect = true) => {
     try {
-      await axios.post("/api/delivery/logout", {}, { headers: getHeaders() });
+      await axios.post("/api/delivery/logout", {}, { headers: getDeliveryHeaders() });
     } catch {
       // ignore
     } finally {
@@ -167,7 +175,7 @@ export const AppContextProvider = ({ children }) => {
 
   const markAsPaid = async (orderId, nav = null) => {
     try {
-      await axios.put(`/api/delivery/order/${orderId}/mark-paid`, {}, { headers: getHeaders() });
+      await axios.put(`/api/delivery/order/${orderId}/mark-paid`, {}, { headers: getDeliveryHeaders() });
       toast.success("Payment marked as PAID ✅");
       fetchdelivery();
     } catch (err) {
@@ -199,6 +207,9 @@ export const AppContextProvider = ({ children }) => {
         showUserLogin, setShowUserLogin,
         axios, setCartItems,
         logout, markAsPaid,
+        getUserHeaders,
+        getSellerHeaders,
+        getDeliveryHeaders,
       }}
     >
       {children}
