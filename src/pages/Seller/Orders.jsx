@@ -76,29 +76,25 @@ const Orders = () => {
   };
 
       // ---------------- GENERATE & sendEmailReceipt ----------------
-      const sendEmailReceipt = async (order) => {
+     const sendEmailReceipt = async (order) => {
   try {
-    const headers = getSellerHeaders(); // from context
-
-    if (!headers.Authorization) {
-      toast.error("Seller not authenticated");
-      return;
-    }
+    const sellerToken = localStorage.getItem("sellerToken");
+    if (!sellerToken) return toast.error("Seller token missing");
 
     const response = await axios.post(
       "/api/order/send-receipt",
       { orderId: order._id },
-      { headers }
+      { headers: { Authorization: `Bearer ${sellerToken}` } }
     );
 
     if (response.data.success) {
-      toast.success("📩 Receipt emailed successfully!");
+      toast.success("Receipt emailed successfully!");
     } else {
       toast.error(response.data.message || "Failed to send receipt");
     }
   } catch (error) {
-    console.error("Send Receipt Error:", error);
-    toast.error("❌ Error sending receipt");
+    console.error("Send Receipt Error:", error.response?.data || error);
+    toast.error("Error sending receipt.");
   }
 };
   // ---------------- DOWNLOAD PDF ----------------
