@@ -59,7 +59,7 @@ const Orders = () => {
     setLoading(true);
     try {
       const { data } = await axios.get("/api/order/seller", {
-        headers: { Authorization: `Bearer ${sellerToken}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (data.success) setOrders(data.orders || []);
       else {
@@ -89,7 +89,7 @@ const Orders = () => {
 
     const pdfBase64 = doc.output("datauristring").split(',')[1]; // Reliable way to get just the base64
 
-    const sellerToken = localStorage.getItem("sellerToken");
+    const Token = localStorage.getItem("sellerToken");
 
     const response = await axios.post(
       "/api/order/send-receipt",
@@ -102,7 +102,7 @@ const Orders = () => {
       },
       {
         headers: {
-          Authorization: `Bearer ${sellerToken}`, // Ensure this matches your authSeller middleware
+          Authorization: `Bearer ${Token}`, // Ensure this matches your authSeller middleware
         },
       }
     );
