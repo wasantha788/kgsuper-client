@@ -75,48 +75,38 @@ const Orders = () => {
     }
   };
 
-     // ---------------- GENERATE & sendEmailReceipt  ----------------
-  const sendEmailReceipt = async (order) => {
+      // ---------------- GENERATE & sendEmailReceipt ----------------
+const sendEmailReceipt = async (order, setSendingEmail = null) => {
+  if (!order?._id) return toast.error("Invalid order");
+
   try {
-    if (!order?.address?.email) {
-      alert("Customer email not found.");
-      return;
-    }
+    // Optionally set loading state
+    if (setSendingEmail) setSendingEmail(order._id);
 
-    const doc = new jsPDF();
-    // ... (Your PDF drawing logic is perfect) ...
-    doc.text("Order Receipt", 20, 20);
-
-    const pdfBase64 = doc.output("datauristring").split(',')[1]; // Reliable way to get just the base64
-
+    // Get seller token safely
     const sellerToken = localStorage.getItem("sellerToken");
+    if (!sellerToken) return toast.error("Seller token not found");
 
+    // Send request to backend
     const response = await axios.post(
       "/api/order/send-receipt",
-      {
-        email: order.address.email,
-        name: order.address.name,
-        orderId: order._id, // Pass this so webhooks can track it!
-        pdfData: pdfBase64,
-        fileName: `Receipt_${order._id}.pdf`,
-      },
-      {
-        headers: {
-          token: sellerToken, // Ensure this matches your authSeller middleware
-        },
-      }
+      { orderId: order._id },
+      { headers: { Authorization: `Bearer ${sellerToken}` } }
     );
 
-    if (response.data.success) {
-      alert("Receipt emailed successfully!");
+    if (response?.data?.success) {
+      toast.success("📩 Receipt emailed successfully!");
+    } else {
+      toast.error(response?.data?.message || "Failed to send receipt");
     }
   } catch (error) {
     console.error("Send Receipt Error:", error);
-    alert("Error sending receipt.");
+    toast.error("❌ Error sending receipt");
+  } finally {
+    // Reset loading state
+    if (setSendingEmail) setSendingEmail(null);
   }
 };
-
-
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
     try {
