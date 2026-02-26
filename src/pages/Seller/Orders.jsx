@@ -76,51 +76,35 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-  const sendEmailReceipt = async (order) => {
-      let invoicePath = null;
-
+  const sendEmailReceipt = async (orderId) => {
   try {
-    const { orderId } = req.body;
-
     if (!orderId) {
-      return res.status(400).json({ success: false, message: "Order ID is required" });
+      alert("Order ID is required");
+      return;
     }
 
-    // Fetch order and user
-    const order = await Order.findById(orderId).populate("items.product");
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    const token = localStorage.getItem("sellerToken"); // or whatever auth you use
 
-    const user = await User.findById(order.user);
-    if (!user || !order.address?.email) {
-      return res.status(404).json({ success: false, message: "User or email not found" });
+    const response = await fetch("/api/order/send-receipt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ orderId }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert("Invoice emailed successfully!");
+    } else {
+      alert("Failed to send invoice: " + data.message);
+      console.error(data.error);
     }
-
-    // Generate PDF invoice
-    invoicePath = await generateInvoice(order, user);
-
-    // Send email via Resend using verified domain
-    await sendReceiptEmail(user.email, invoicePath, {
-      from: "KG Super <onboarding@kgsupershop.com>", // Use your verified domain here
-      subject: `Payment Successful - Invoice #${order._id}`,
-      html: `<h2>Thank you for your order!</h2>
-             <p>Please find your invoice attached.</p>`,
-    });
-
-    // Delete the PDF after sending
-    if (fs.existsSync(invoicePath)) fs.unlinkSync(invoicePath);
-
-    return res.status(200).json({
-      success: true,
-      message: "Invoice emailed successfully!",
-    });
-  } catch (error) {
-    console.error("Send Invoice Error:", error);
-    if (invoicePath && fs.existsSync(invoicePath)) fs.unlinkSync(invoicePath);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to send invoice",
-      error: error.message,
-    });
+  } catch (err) {
+    console.error("Send Invoice Error:", err);
+    alert("Error sending invoice");
   }
 };
 
