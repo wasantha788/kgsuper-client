@@ -77,45 +77,52 @@ const Orders = () => {
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
   const sendEmailReceipt = async (order) => {
+      let invoicePath = null;
+
   try {
-    if (!order?.address?.email) {
-      alert("Customer email not found.");
-      return;
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "Order ID is required" });
     }
 
-    const doc = new jsPDF();
-    // ... (Your PDF drawing logic is perfect) ...
-    doc.text("Order Receipt", 20, 20);
+    // Fetch order and user
+    const order = await Order.findById(orderId).populate("items.product");
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
-    const pdfBase64 = doc.output("datauristring").split(',')[1]; // Reliable way to get just the base64
-
-    const Token = localStorage.getItem("sellerToken");
-
-    const response = await axios.post(
-      "/api/order/send-receipt",
-      {
-        email: order.address.email,
-        name: order.address.name,
-        orderId: order._id, // Pass this so webhooks can track it!
-        pdfData: pdfBase64,
-        fileName: `Receipt_${order._id}.pdf`,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${Token}`, // Ensure this matches your authSeller middleware
-        },
-      }
-    );
-
-    if (response.data.success) {
-      alert("Receipt emailed successfully!");
+    const user = await User.findById(order.user);
+    if (!user || !order.address?.email) {
+      return res.status(404).json({ success: false, message: "User or email not found" });
     }
+
+    // Generate PDF invoice
+    invoicePath = await generateInvoice(order, user);
+
+    // Send email via Resend using verified domain
+    await sendReceiptEmail(user.email, invoicePath, {
+      from: "KG Super <onboarding@kgsupershop.com>", // Use your verified domain here
+      subject: `Payment Successful - Invoice #${order._id}`,
+      html: `<h2>Thank you for your order!</h2>
+             <p>Please find your invoice attached.</p>`,
+    });
+
+    // Delete the PDF after sending
+    if (fs.existsSync(invoicePath)) fs.unlinkSync(invoicePath);
+
+    return res.status(200).json({
+      success: true,
+      message: "Invoice emailed successfully!",
+    });
   } catch (error) {
-    console.error("Send Receipt Error:", error);
-    alert("Error sending receipt.");
+    console.error("Send Invoice Error:", error);
+    if (invoicePath && fs.existsSync(invoicePath)) fs.unlinkSync(invoicePath);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send invoice",
+      error: error.message,
+    });
   }
 };
-
 
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
