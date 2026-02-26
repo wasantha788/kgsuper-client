@@ -76,10 +76,11 @@ const Orders = () => {
   };
 
      // ---------------- GENERATE & sendEmailReceipt  ----------------
-  const sendEmailReceipt = async (order) => {
-  const token = localStorage.getItem("sellerToken"); // get seller token
+    const sendEmailReceipt = async (order) => {
+  const token = localStorage.getItem("sellerToken"); // ✅ get valid seller token
+
   if (!token) {
-    toast.error("Seller not logged in");
+    toast.error("You are not logged in as seller");
     return;
   }
 
@@ -92,18 +93,22 @@ const Orders = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          credentials: "include",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`, // ✅ valid token
         },
         body: JSON.stringify({ orderId: order._id }),
       }
     );
 
     const data = await response.json();
-    if (data.success) toast.success("Invoice emailed successfully!");
-    else toast.error("Failed to send invoice: " + data.message);
+
+    if (data.success) {
+      toast.success("Invoice emailed successfully!");
+    } else {
+      toast.error("Failed to send invoice: " + data.message);
+      console.error(data.error);
+    }
   } catch (err) {
-    console.error(err);
+    console.error("Send Invoice Error:", err);
     toast.error("Error sending invoice");
   } finally {
     setSendingEmail(null);
