@@ -18,7 +18,7 @@ export default function SellerRequestLogin() {
 
     try {
       const res = await axios.post(
-        "https://kgsuper-server-production.up.railway.app/api/sellerrequestlogin",
+       "https://kgsuper-server-production.up.railway.app/api/auth/login",
         form
       );
 
@@ -33,8 +33,9 @@ export default function SellerRequestLogin() {
       const message = err.response?.data?.message;
 
       // 🚨 If not verified
-      if (message === "Please verify your email before logging in.") {
+      if (message?.includes("verify")) {
         toast.error("Your email is not verified. Please check your inbox.");
+
       } else {
         toast.error(message || "Login failed");
       }
