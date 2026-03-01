@@ -175,7 +175,7 @@ const Orders = () => {
   // ---------------- SOCKET.IO ----------------
   useEffect(() => {
     if (!user?._id) return;
-    const socket = io("http://localhost:4000", {
+    const socket = io("https://kgsuper-server-production.up.railway.app", {
       transports: ["websocket"],
       withCredentials: true,
     });
@@ -342,7 +342,7 @@ const Orders = () => {
                     href={`tel:${order.address?.phone}`}
                     className="font-semibold text-gray-800 hover:text-blue-600 transition-colors block"
                   >
-                    📞 {order.address?.phone}
+                    {order.address?.phone}
                   </a>
 
                   {/* Email */}
