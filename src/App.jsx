@@ -10,6 +10,7 @@ import ChatLayout from "./layouts/ChatLayout.jsx";
 import SellerLayout from "./pages/Seller/SellerLayout.jsx";
 import DeliveryLayout from "./components/DeliveryAgent/DeliveryLayout.jsx";
 
+
 // Auth
 import Login from "./components/Login.jsx";
 import Loading from "./components/Loading.jsx";
@@ -23,8 +24,8 @@ import Cart from "./pages/Cart.jsx";
 import AddAddress from "./pages/AddAddress.jsx";
 import MyOrders from "./pages/MyOrders.jsx";
 import Contact from "./pages/Contact.jsx";
-import Profile from "./pages/Profile.jsx";
 import Map from "./pages/Map.jsx";
+import Profile from "./pages/Profile.jsx";
 import CustomerChatRequest from "./components/CustomerChatRequest.jsx";
 import DeliveryChatPage from "./components/DeliveryAgent/DeliveryOrderConnect.jsx";
 
@@ -52,6 +53,8 @@ import DeliveryOrderDetails from "./components/DeliveryAgent/OrderDetails.jsx";
 import AllOrders from "./components/DeliveryAgent/AllOrders.jsx";
 import OrderAssigned from "./components/DeliveryAgent/Ordersassigned.jsx";
 import DeliveryOrderConnect from "./components/DeliveryAgent/DeliveryOrderConnect.jsx";
+import VerifyEmail from "./pages/VerifyEmail.jsx";
+
 
 
 
@@ -77,16 +80,17 @@ const App = () => {
           <Route path="/map" element={<Map />} />
           <Route path="/loader" element={<Loading />} />
           <Route path="/delivery/chat-request/:orderId" element={<CustomerChatRequest />} />
-          <Route path="/delivery/chat/:orderId" element={<DeliveryChatPage />} /> 
+          <Route path="/delivery/chat/:orderId" element={<DeliveryChatPage />} />
           <Route path="/profile" element={<Profile />} />
+          </Route>
 
+           
 
-        
-      
-
+           {/* 📧 VERIFICATION PAGE (No Navbar - Outside MainLayout) */}
+        <Route path="/verify-email" element={<VerifyEmail />} />
           {/* Orders */}
-          <Route path="/ordersassigned" element={<OrderAssigned />} />
-        </Route>
+        <Route path="/ordersassigned" element={<OrderAssigned />} />
+        
 
         {/* 🚚 DELIVERY */}
         <Route element={<MainLayout />}>
