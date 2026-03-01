@@ -14,87 +14,88 @@ const shopIcon = new L.Icon({
 });
 
 const Map = () => {
-  // State for responsive map properties
   const [mapHeight, setMapHeight] = useState("600px");
   const [mapCenter, setMapCenter] = useState(SHOP_POSITION);
   const [mapZoom, setMapZoom] = useState(18);
 
-  // 🔄 Adjust map dynamically on resize
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
-
       if (width < 640) {
-        // Mobile
         setMapHeight("350px");
         setMapZoom(16);
-        setMapCenter([SHOP_POSITION[0] + 0.005, SHOP_POSITION[1]]);
+        setMapCenter([SHOP_POSITION[0] + 0.002, SHOP_POSITION[1]]);
       } else if (width < 1024) {
-        // Tablet
         setMapHeight("500px");
         setMapZoom(17);
         setMapCenter(SHOP_POSITION);
       } else {
-        // Desktop
         setMapHeight("600px");
         setMapZoom(18);
         setMapCenter(SHOP_POSITION);
       }
     };
 
-    handleResize(); // Initial setup
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   return (
-    <div className="bg-white min-h-screen py-12 px-4 md:px-12 lg:px-20">
+    /* CHANGED: Used bg-main-bg and text-main-text */
+    <div className="bg-main-bg min-h-screen py-12 px-4 md:px-12 lg:px-20 transition-colors duration-300">
+      
       {/* Header */}
       <div className="text-center mb-10">
-        <h1 className="text-3xl md:text-5xl font-extrabold text-green-700 mb-3">
+        {/* CHANGED: text-primary for the title */}
+        <h1 className="text-3xl md:text-5xl font-extrabold text-primary mb-3">
           Our Shop Location 🗺️
         </h1>
-        <p className="text-gray-600 text-base md:text-xl max-w-2xl mx-auto">
+        <p className="text-main-text opacity-70 text-base md:text-xl max-w-2xl mx-auto">
           Find your way to us easily — the map below points you right to our doors.
         </p>
       </div>
 
       {/* Map Container */}
-      <div className="w-full rounded-2xl shadow-2xl overflow-hidden border-4 border-green-500 transition-all duration-300">
+      {/* CHANGED: border-primary and shadow handling */}
+      <div className="w-full rounded-2xl shadow-2xl overflow-hidden border-4 border-primary transition-all duration-300">
         <MapContainer
           center={mapCenter}
           zoom={mapZoom}
           style={{ height: mapHeight }}
-          className="w-full z-0"
+          /* CRITICAL DARK MODE FIX: 
+             The filter below inverts the map colors and adjusts hue 
+             to make standard tiles look like a "Dark Mode" map.
+          */
+          className="w-full z-0 dark:brightness-[0.6] dark:invert-[1] dark:hue-rotate-[180deg] dark:contrast-[1.1]"
           scrollWheelZoom={true}
           zoomControl={false}
           attributionControl={false}
         >
-          {/* OpenStreetMap Tiles */}
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+            attribution='&copy; OpenStreetMap contributors'
           />
 
-          {/* Zoom Control */}
           <ZoomControl position="bottomright" />
 
-          {/* Shop Marker */}
           <Marker position={SHOP_POSITION} icon={shopIcon}>
+            {/* CHANGED: Styled Popup for Dark Mode support */}
             <Popup className="font-sans text-center">
-              <strong className="text-green-600">K.G. Super Shop Is Here!</strong>
-              <br />
-              <span className="text-gray-500 text-xs mt-1 block">
-                 Directions or details
-              </span>
+              <div className="p-1">
+                <strong className="text-primary text-lg block">K.G. Super Shop</strong>
+                <span className="text-gray-500 dark:text-gray-400 text-xs mt-1 block font-medium">
+                   We are open and ready to serve you!
+                </span>
+              </div>
             </Popup>
           </Marker>
         </MapContainer>
       </div>
 
-      {/* Footer / Additional Info */}
-      <div className="mt-12 text-center text-gray-700">
-        <p className="text-xl">Have a question? Contact us directly!</p>
+      {/* Footer Info */}
+      <div className="mt-12 text-center text-main-text">
+        <p className="text-xl font-medium">Have a question? Contact us directly!</p>
       </div>
     </div>
   );

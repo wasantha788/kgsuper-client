@@ -41,6 +41,30 @@ const getDeliveryHeaders = () => {
   // CRITICAL: Prevent sync before initial DB fetch is complete
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+
+  // --- DARK MODE STATE ---
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check localStorage or system preference on initial load
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) return savedTheme === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+
+  // ---------------- DARK MODE EFFECT ----------------
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  
+  const toggleDarkMode = () => setIsDarkMode(prev => !prev);
+
   // ---------------- FETCH USER ----------------
   const fetchUser = async () => {
     try {
@@ -62,6 +86,8 @@ const getDeliveryHeaders = () => {
       setIsInitialLoad(false);
     }
   };
+
+  
 
   // ---------------- FETCH SELLER ----------------
   const fetchSeller = async () => {
@@ -210,6 +236,7 @@ const getDeliveryHeaders = () => {
         getUserHeaders,
         getSellerHeaders,
         getDeliveryHeaders,
+        isDarkMode, toggleDarkMode 
       }}
     >
       {children}
