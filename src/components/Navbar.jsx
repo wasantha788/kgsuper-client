@@ -174,37 +174,59 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* ================= MOBILE NAV ================= */}
-        <div className="flex sm:hidden items-center gap-5">
-          <button onClick={toggleDarkMode} className="text-main-text">
-            {isDarkMode ? <Sun size={22} className="text-yellow-400" /> : <Moon size={22} />}
+        {/* ================= MOBILE NAV (ICON ROW) ================= */}
+        <div className="flex sm:hidden items-center gap-4">
+          <button onClick={toggleDarkMode} className="text-main-text p-1">
+            {isDarkMode ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} />}
           </button>
-          <div onClick={() => navigate("/cart")} className="relative">
+          
+          {/* AI ICON - Explicitly added for small screens */}
+          <button 
+            onClick={() => setChatOpen(true)} 
+            className="text-primary p-1 active:scale-90 transition-transform"
+          >
+            <Sparkles size={22} />
+          </button>
+
+          <div onClick={() => navigate("/cart")} className="relative p-1">
             <img src={assets.nav_cart_icon} className="w-7 dark:invert" alt="cart" />
-            <span className="absolute -top-1 -right-1 text-[9px] bg-primary text-white w-4 h-4 flex items-center justify-center rounded-full font-bold">{getCartCount()}</span>
+            <span className="absolute top-0 right-0 text-[9px] bg-primary text-white w-4 h-4 flex items-center justify-center rounded-full font-bold">
+              {getCartCount()}
+            </span>
           </div>
+          
           <button onClick={() => setOpen(!open)} className="text-main-text p-1">
-            {open ? <X size={28} /> : <Menu size={28} />}
+            {open ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
 
-        {/* MOBILE MENU PANEL */}
+        {/* MOBILE MENU PANEL (SIDEBAR) */}
         <div className={`fixed inset-y-0 right-0 w-3/4 max-w-xs bg-main-bg shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out sm:hidden ${open ? "translate-x-0" : "translate-x-full"}`}>
           <div className="flex flex-col h-full p-8">
             <div className="flex justify-between items-center mb-10">
-              <span className="font-bold text-xl text-primary">Menu</span>
+              <span className="font-bold text-xl text-primary uppercase">Menu</span>
               <X onClick={() => setOpen(false)} className="text-main-text cursor-pointer" />
             </div>
             
             <div className="flex flex-col gap-6 text-lg font-medium">
               <NavLink to="/" onClick={() => setOpen(false)} className="text-main-text">Home</NavLink>
               <NavLink to="/products" onClick={() => setOpen(false)} className="text-main-text">All Products</NavLink>
+              
+              {/* AI CHAT ALSO ACCESSIBLE IN MENU */}
+              <button 
+                onClick={() => { setChatOpen(true); setOpen(false); }} 
+                className="flex items-center gap-2 text-primary font-bold text-left"
+              >
+                <Sparkles size={20} /> AI Assistant
+              </button>
+
               <NavLink to="/contact" onClick={() => setOpen(false)} className="text-main-text">Contact</NavLink>
+              
               {user && (
-                <>
+                <div className="flex flex-col gap-6 pt-6 border-t border-main-border">
                   <NavLink to="/profile" onClick={() => setOpen(false)} className="text-main-text">Profile Settings</NavLink>
                   <NavLink to="/my-orders" onClick={() => setOpen(false)} className="text-main-text">My Orders</NavLink>
-                </>
+                </div>
               )}
             </div>
 
