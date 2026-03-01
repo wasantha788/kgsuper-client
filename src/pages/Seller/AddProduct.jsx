@@ -3,7 +3,7 @@ import { assets } from "../../assets/assets";
 import { useAppContext } from "../../context/AppContext";
 import toast from "react-hot-toast";
 
-const groceryCategories = ["Fruits", "Vegetables", "Oil","Dairy", "Eggs","Snacks","Biscuits","Bakery","Grains","Soft Drinks","Malts & Drinking Powders","Noodles And Pastas","Pharmacy","Spreads & Honey",]
+const groceryCategories = ["Fruits", "Vegetables", "Oil","Dairy", "Eggs","Snacks","Biscuits","Bakery","Grains","Soft Drinks","Malts & Drinking Powders","Noodles And Pastas","Pharmacy","Spreads & Honey","Home made items",]
 
 const AddProduct = () => {
   const [files, setFiles] = useState([]);

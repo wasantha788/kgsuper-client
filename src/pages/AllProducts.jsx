@@ -23,6 +23,7 @@ const AllProducts = () => {
     "Noodles And Pastas",
     "Pharmacy",
     "Spreads & Honey",
+    "Home made items",
   ];
 
   useEffect(() => {
