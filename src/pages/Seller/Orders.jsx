@@ -26,7 +26,7 @@ const Orders = () => {
   const [isLive, setIsLive] = useState(false);
   const [countdowns, setCountdowns] = useState({}); // Stores { orderId: seconds Remaining }
   const socketRef = useRef(null);
-  const containerRef = useRef(null);
+
   const token = user?.token;
 
   // ---------------- TIMER TICKER ----------------
@@ -75,42 +75,62 @@ const Orders = () => {
     }
   };
 
-      // ---------------- GENERATE & sendEmailReceipt ----------------
-         const sendEmailReceipt = async (order) => {
-  // 1. Prevent multiple clicks if already sending
-  if (sendingEmail === order._id) return;
-
-  try {
-    // 2. Retrieve the correct token
-    const sellerToken = localStorage.getItem("sellerToken");
-    if (!sellerToken) {
-      toast.error("Seller session expired. Please login again.");
+  // ---------------- GENERATE & SEND PDF EMAIL ----------------
+  const sendEmailReceipt = async (order) => {
+    if (!order.address?.email) {
+      toast.error("No customer email found for this order.");
       return;
     }
+    setSendingEmail(order._id);
 
-    // 3. Match headers to your backend (which looks for 'token' or 'seller_token')
-    const response = await axios.post(
-      "/api/order/send-receipt",
-      { orderId: order._id },
-      { 
-        headers: { 
-          token: sellerToken // Use 'token' or 'seller_token' based on your middleware
-        } 
-      }
-    );
+    try {
+      // 1. Generate PDF in memory
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text("Order Receipt", 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Order ID: ${order._id}`, 14, 28);
+      doc.text(`Customer: ${order.address?.firstName} ${order.address?.lastName}`, 14, 34);
 
-    if (response.data.success) {
-      toast.success("Receipt emailed successfully!");
-    } else {
-      toast.error(response.data.message || "Failed to send receipt");
+      const tableData = order.items?.map((item) => [
+        item.product?.name || "Product",
+        item.quantity,
+        `${currency}${item.product?.price || 0}`,
+        `${currency}${(item.quantity * (item.product?.price || 0)).toFixed(2)}`,
+      ]);
+
+      autoTable(doc, {
+        startY: 40,
+        head: [["Product", "Qty", "Price", "Total"]],
+        body: tableData,
+      });
+
+      doc.text(`Grand Total: ${currency}${order.amount.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 10);
+
+      // 2. Convert to Base64
+      // We strip the data URL prefix (e.g., "data:application/pdf;base64,")
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+      // 3. Send to Backend
+      const { data } = await axios.post(
+        "/api/order/send-receipt",
+        {
+          email: order.address.email,
+          orderDetails: order,
+          pdfData: pdfBase64, // Sending the string to backend
+          fileName: `Receipt_${order._id}.pdf`
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (data.success) toast.success("PDF Receipt sent to customer!");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to send PDF email");
+    } finally {
+      setSendingEmail(null);
     }
-  } catch (error) {
-    // 4. Improved error logging
-    const errorMessage = error.response?.data?.message || "Error sending receipt.";
-    console.error("Send Receipt Error:", error.response?.data || error);
-    toast.error(errorMessage);
-  }
-};
+  };
+
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
     try {
@@ -155,7 +175,7 @@ const Orders = () => {
   // ---------------- SOCKET.IO ----------------
   useEffect(() => {
     if (!user?._id) return;
-    const socket = io("https://kgsuper-server-production.up.railway.app", {
+    const socket = io("http://localhost:4000", {
       transports: ["websocket"],
       withCredentials: true,
     });
@@ -165,7 +185,7 @@ const Orders = () => {
     socket.on("disconnect", () => setIsLive(false));
     socket.emit("join_seller");
 
-    socket.on("orderUpdated", ({ orderId, deliveryBoy }) => {
+    socket.on("orderAcceptedByDelivery", ({ orderId, deliveryBoy }) => {
       setCountdowns((prev) => {
         const updated = { ...prev };
         delete updated[orderId];
@@ -180,26 +200,7 @@ const Orders = () => {
       );
       toast.success(`✅ Order accepted by ${deliveryBoy.name}`);
     });
-    // --- Update this listener in your Seller Dashboard useEffect ---
-socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
-  // Stop the 20s timer
-  setCountdowns((prev) => {
-    const updated = { ...prev };
-    delete updated[orderId];
-    return updated;
-  });
 
-  // Update the local state so the UI changes immediately
-  setOrders((prev) =>
-    prev.map((o) =>
-      o._id === orderId
-        ? { ...o, assignedDeliveryBoy: deliveryBoy, status: status }
-        : o
-    )
-  );
-  toast.success(`✅ Order accepted by ${deliveryBoy.name}`);
-
-});
     socket.on("orderUnaccepted", (orderId) => {
       setCountdowns((prev) => {
         const updated = { ...prev };
@@ -261,54 +262,24 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
     } catch (err) { toast.error("Failed to update status"); }
     finally { setProcessingOrders((prev) => prev.filter((id) => id !== orderId)); }
   };
-   
-  useEffect(() => {
-  const container = containerRef.current;
-  if (!container) return;
 
-  const handleScroll = () => {
-    if (container.scrollTop === 0) {
-      console.log("Scrolled to top — refreshing orders");
-      fetchOrders();
+  const sendToDelivery = async (order) => {
+    if (!socketRef.current || processingOrders.includes(order._id)) return;
+    setProcessingOrders((prev) => [...prev, order._id]);
+    setCountdowns((prev) => ({ ...prev, [order._id]: 10 }));
+    setOrders((prev) => prev.map((o) => o._id === order._id ? { ...o, status: "Out for delivery" } : o));
+    socketRef.current.emit("send-to-delivery", { order });
+
+    try {
+      await axios.put(`/api/order/status/${order._id}`, { status: "Out for delivery" }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(`Searching for rider...`);
+    } catch (err) {
+      setCountdowns((prev) => { const u = { ...prev }; delete u[order._id]; return u; });
+      toast.error("Failed to initiate delivery");
+    } finally {
+      setProcessingOrders((prev) => prev.filter((id) => id !== order._id));
     }
   };
-
-  container.addEventListener("scroll", handleScroll);
-  return () => container.removeEventListener("scroll", handleScroll);
-}, [user]);
-
- const handleSendEmail = async (order) => {
-  setSendingEmail(order._id);
-  await sendEmailReceipt(order);
-  setSendingEmail(null);
-};
-
-   const sendToDelivery = async (order) => {
-  if (!socketRef.current || processingOrders.includes(order._id)) return;
-  
-  setProcessingOrders((prev) => [...prev, order._id]);
-  setCountdowns((prev) => ({ ...prev, [order._id]: 20 }));
-
-  // 1. Use "Out for delivery" consistently
-  const updatedOrder = { ...order, status: "Out for delivery" };
-
-  setOrders((prev) => prev.map((o) => o._id === order._id ? updatedOrder : o));
-  
-  // 2. Emit the UPDATED order object, not the old one
-  socketRef.current.emit("send-to-delivery", { order: updatedOrder });
-
-  try {
-    await axios.put(`/api/order/status/${order._id}`, 
-      { status: "Out for delivery" }, 
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    toast.success(`Searching for rider...`);
-  } catch (err) {
-    // ... error handling
-  } finally {
-    setProcessingOrders((prev) => prev.filter((id) => id !== order._id));
-  }
-};
 
   const deleteOrder = async (orderId) => {
     if (!window.confirm("Are you sure?")) return;
@@ -321,108 +292,64 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
     } catch (err) { toast.error("Delete failed"); }
   };
 
- return (
-  <div className="bg-gray-50 pt-2 pb-6 min-h-screen">
-    <div className="max-w-6xl mx-auto px-4 md:px-10">
-      {/* Header: Title + Live Indicator + Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-3xl font-bold text-gray-800">Seller Orders</h2>
-          <div className="flex items-center gap-2 px-3 py-1 bg-white border rounded-full shadow-sm">
-            <div
-              className={`w-2.5 h-2.5 rounded-full ${
-                isLive ? "bg-green-500 animate-pulse" : "bg-red-500"
-              }`}
-            ></div>
-            <span className="text-xs font-medium text-gray-600">
-              {isLive ? "Live" : "Offline"}
-            </span>
+  return (
+    <div className="flex-1 min-h-screen bg-gray-50 py-6 overflow-y-auto">
+      <div className="max-w-6xl mx-auto px-4 md:px-10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <div className="flex items-center gap-4">
+            <h2 className="text-3xl font-bold text-gray-800">Seller Orders</h2>
+            <div className="flex items-center gap-2 px-3 py-1 bg-white border rounded-full shadow-sm">
+              <div className={`w-2.5 h-2.5 rounded-full ${isLive ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
+              <span className="text-xs font-medium text-gray-600">{isLive ? "Live" : "Offline"}</span>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={downloadPaidPDF} className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 font-semibold text-sm transition-all">Download Paid PDF</button>
+            <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-sm font-semibold">Refresh</button>
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={downloadPaidPDF}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 font-semibold text-sm transition-all"
-          >
-            Download Paid PDF
-          </button>
-          <button
-            onClick={fetchOrders}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-sm font-semibold"
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
+        <div className="space-y-6">
+          {orders.map((order) => (
+            <div key={order._id} className={`p-6 bg-white rounded-xl border shadow-md flex flex-col md:flex-row gap-6 justify-between ${order.status === "Cancelled" ? "border-red-400 bg-red-50 opacity-80" : "border-gray-200"}`}>
+              <div className="flex-1 space-y-4">
+                <div className="flex items-center gap-3">
+                  <p className="text-gray-600 text-sm">Order ID: <span className="font-bold text-gray-800">{order._id}</span></p>
+                  <button onClick={() => copyOrderId(order._id)} className="text-blue-500 text-xs font-bold uppercase">{copiedOrderId === order._id ? "Copied!" : "Copy"}</button>
+                  <span className={`px-2 py-0.5 text-[10px] font-black rounded border ${getPaymentStyle(order.paymentType)}`}>
+                    {order.paymentType?.toUpperCase() || "ONLINE"}
+                  </span>
+                </div>
+                {order.items?.map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-gray-50 p-2 rounded">
+                    <img src={item.product?.image?.[0] || assets.box_icon} className="w-16 h-16 rounded object-cover" alt="" />
+                    <p className="font-medium">{item.product?.name} <span className="text-blue-600 font-bold ml-1">x{item.quantity}</span></p>
+                  </div>
+                ))}
+                <div className="text-sm text-gray-700 space-y-1">
+                  {/* Customer Name */}
+                  <p className="font-bold text-base">
+                    {order.address?.firstName} {order.address?.lastName}
+                  </p>
 
-      {/* Orders List */}
-      <div
-        ref={containerRef}
-        className="space-y-6 overflow-y-auto max-h-[calc(100vh-100px)]"
-      >
-        {orders.map((order) => (
-          <div
-            key={order._id}
-            className={`p-6 bg-white rounded-xl border shadow-md flex flex-col md:flex-row gap-6 justify-between ${
-              order.status === "Cancelled"
-                ? "border-red-400 bg-red-50 opacity-80"
-                : "border-gray-200"
-            }`}
-          >
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center gap-3">
-                <p className="text-gray-600 text-sm">
-                  Order ID:{" "}
-                  <span className="font-bold text-gray-800">{order._id}</span>
-                </p>
-                <button
-                  onClick={() => copyOrderId(order._id)}
-                  className="text-blue-500 text-xs font-bold uppercase"
-                >
-                  {copiedOrderId === order._id ? "Copied!" : "Copy"}
-                </button>
-                <span
-                  className={`px-2 py-0.5 text-[10px] font-black rounded border ${getPaymentStyle(
-                    order.paymentType
-                  )}`}
-                >
-                  {order.paymentType?.toUpperCase() || "ONLINE"}
-                </span>
-              </div>
+                  {/* Address & Phone - No </div> in the middle! */}
+                  <p className="text-gray-600">
+                    {order.address?.street}, {order.address?.city}
+                  </p>
 
-              {order.items?.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 bg-gray-50 p-2 rounded"
-                >
-                  <img
-                    src={item.product?.image?.[0] || assets.box_icon}
-                    className="w-16 h-16 rounded object-cover"
-                    alt=""
-                  />
-                  <p className="font-medium">
-                    {item.product?.name}{" "}
-                    <span className="text-blue-600 font-bold ml-1">
-                      x{item.quantity}
-                    </span>
+                  {/* Phone Number */}
+                  <a
+                    href={`tel:${order.address?.phone}`}
+                    className="font-semibold text-gray-800 hover:text-blue-600 transition-colors block"
+                  >
+                    📞 {order.address?.phone}
+                  </a>
+
+                  {/* Email */}
+                  <p className="text-blue-600 font-medium italic">
+                    {order.address?.email}
                   </p>
                 </div>
-              ))}
-
-              <div className="text-sm text-gray-700">
-                <p className="font-bold">
-                  {order.address?.firstName} {order.address?.lastName}
-                </p>
-                <p>
-                  {order.address?.street}, {order.address?.city}
-                </p>
-                <p className="text-blue-600 font-medium italic">
-                  {order.address?.email}
-                </p>
-              </div>
-
-
                 {/* DELIVERY BOY INFO */}
                 {order.assignedDeliveryBoy && (
                   <div className="p-2 mt-1 bg-green-50 border rounded text-sm text-gray-700">
@@ -454,7 +381,7 @@ socket.on("orderAcceptedByDelivery", ({ orderId, status, deliveryBoy }) => {
                   {/* 1. EMAIL RECEIPT BUTTON: Shows if paid, else shows pending label */}
                   {order.isPaid ? (
                     <button
-                      onClick={() => handleSendEmail(order)}
+                      onClick={() => sendEmailReceipt(order)}
                       disabled={sendingEmail === order._id}
                       className="w-full py-1.5 bg-green-600 text-white text-xs font-bold rounded hover:bg-green-700 transition-colors"
                     >

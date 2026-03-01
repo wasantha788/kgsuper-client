@@ -23,6 +23,7 @@ import Cart from "./pages/Cart.jsx";
 import AddAddress from "./pages/AddAddress.jsx";
 import MyOrders from "./pages/MyOrders.jsx";
 import Contact from "./pages/Contact.jsx";
+import Profile from "./pages/Profile.jsx";
 import Map from "./pages/Map.jsx";
 import CustomerChatRequest from "./components/CustomerChatRequest.jsx";
 import DeliveryChatPage from "./components/DeliveryAgent/DeliveryOrderConnect.jsx";
@@ -76,7 +77,8 @@ const App = () => {
           <Route path="/map" element={<Map />} />
           <Route path="/loader" element={<Loading />} />
           <Route path="/delivery/chat-request/:orderId" element={<CustomerChatRequest />} />
-          <Route path="/delivery/chat/:orderId" element={<DeliveryChatPage />} /> {/* your actual chat page */}
+          <Route path="/delivery/chat/:orderId" element={<DeliveryChatPage />} /> 
+          <Route path="/profile" element={<Profile />} />
 
 
         
