@@ -109,7 +109,7 @@ const AddAddress = () => {
         </div>
 
         {/* Image */}
-        <div className="flex-1 flex justify-center md:justify-end">
+        <div className="flex-1 flex justify-center md:justify-center">
           <img
             className="w-full max-w-sm object-contain"
             src={assets.add_address_iamge}
