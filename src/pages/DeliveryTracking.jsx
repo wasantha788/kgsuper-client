@@ -13,7 +13,7 @@ const DeliveryTracking = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch order with Auth handling
+  // ✅ Fetch order with 401 handling to "remove" token errors
   const fetchOrder = async () => {
     try {
       const { data } = await axios.get(`/api/order/${orderId}`, {
@@ -26,9 +26,11 @@ const DeliveryTracking = () => {
         toast.error(data.message || "Failed to fetch order");
       }
     } catch (error) {
-      // ✅ Handle "jwt expired" / 401 Unauthorized
+      // ✅ Check if the error is 401 (Unauthorized/Expired Token)
       if (error.response?.status === 401) {
-        toast.error("Session expired. Please login again.");
+        console.warn("Auth token expired. Redirecting...");
+        // Use toast.error only once to avoid spamming during intervals
+        if (!loading) toast.error("Session expired. Please login again.");
         navigate("/login"); 
       } else {
         toast.error(error.response?.data?.message || "Error fetching order");
@@ -43,6 +45,9 @@ const DeliveryTracking = () => {
     if (!orderId) return;
 
     fetchOrder();
+    
+    // Refresh every 10 seconds. 
+    // If the token expires, the fetchOrder catch block will redirect the user.
     const interval = setInterval(fetchOrder, 10000);
     return () => clearInterval(interval);
   }, [orderId]);
@@ -55,7 +60,7 @@ const DeliveryTracking = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[70vh] bg-white dark:bg-gray-900">
-        <p className="text-gray-500 dark:text-gray-400 text-lg animate-pulse">Loading order details...</p>
+        <p className="text-gray-500 dark:text-gray-400 text-lg">Loading order details...</p>
       </div>
     );
   }
@@ -79,11 +84,11 @@ const DeliveryTracking = () => {
   const steps = ["Order Placed", "Processing", "Packing", "Out for delivery", "Delivered"];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16 px-4 flex flex-col items-center transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16 px-4 flex flex-col items-center transition-colors">
       <h1 className="text-3xl font-bold mb-2 text-gray-800 dark:text-white">Track Order</h1>
 
-      {/* QR Code Section */}
-      <div className="mb-4 p-4 bg-white rounded-xl shadow-sm dark:bg-gray-200">
+      {/* QR Code with white bg for scannability in dark mode */}
+      <div className="mb-4 p-3 bg-white rounded-lg shadow-sm">
         <QRCode value={order._id} size={128} />
       </div>
 
@@ -92,9 +97,9 @@ const DeliveryTracking = () => {
       </p>
 
       {/* Progress Bar */}
-      <div className="w-full max-w-3xl bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-8 overflow-hidden">
+      <div className="w-full max-w-3xl bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-8">
         <div
-          className={`h-4 rounded-full transition-all duration-700 ease-in-out ${
+          className={`h-4 rounded-full transition-all duration-500 ${
             order.status === "Cancelled" ? "bg-red-500" : "bg-green-500"
           }`}
           style={{ width: `${statusProgress[order.status] || 0}%` }}
@@ -102,11 +107,11 @@ const DeliveryTracking = () => {
       </div>
 
       {/* Status Steps */}
-      <div className="w-full max-w-3xl flex justify-between text-[10px] md:text-sm font-medium text-gray-600 dark:text-gray-400 mb-8">
+      <div className="w-full max-w-3xl flex justify-between text-sm font-medium text-gray-600 dark:text-gray-400 mb-8">
         {steps.map((step) => (
           <div key={step} className="flex flex-col items-center">
             <div
-              className={`w-6 h-6 rounded-full mb-1 flex items-center justify-center text-white transition-colors ${
+              className={`w-6 h-6 rounded-full mb-1 flex items-center justify-center text-white ${
                 steps.indexOf(order.status) >= steps.indexOf(step)
                   ? "bg-green-500"
                   : "bg-gray-300 dark:bg-gray-600"
@@ -114,15 +119,13 @@ const DeliveryTracking = () => {
             >
               {steps.indexOf(order.status) >= steps.indexOf(step) ? "✓" : ""}
             </div>
-            <span className={steps.indexOf(order.status) >= steps.indexOf(step) ? "text-green-600 dark:text-green-400 font-bold" : ""}>
-              {step}
-            </span>
+            <span className="text-center text-[10px] md:text-xs">{step}</span>
           </div>
         ))}
       </div>
 
-      {/* Order Items Card */}
-      <div className="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+      {/* Order Items */}
+      <div className="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-transparent dark:border-gray-700">
         <h2 className="text-lg font-bold mb-4 dark:text-white">Order Items</h2>
         <div className="space-y-4">
           {order.items.map((item, i) => (
@@ -150,19 +153,18 @@ const DeliveryTracking = () => {
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Payment Type: <span className="font-semibold text-gray-900 dark:text-gray-100">{order.paymentType}</span>
           </p>
-          <p className="text-sm font-bold dark:text-gray-200">
-            Total Amount: <span className="text-lg text-gray-900 dark:text-white ml-1">{currency}{order.amount}</span>
+          <p className="text-sm font-bold dark:text-gray-100">
+            Total Amount: <span className="text-lg text-gray-900 dark:text-white">{currency}{order.amount}</span>
           </p>
         </div>
       </div>
 
-      {/* Floating Chat Button */}
+      {/* Chat Button */}
       <button
         onClick={navigateToChatRequest}
-        className="fixed bottom-6 right-6 px-6 py-4 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-xl flex items-center gap-2 hover:scale-110 active:scale-95 transition-all z-50"
+        className="fixed bottom-6 right-6 px-7 py-4 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-2xl shadow-xl flex items-center gap-2 hover:scale-105 transition-all"
       >
-        <span className="text-2xl">💬</span>
-        <span className="font-bold text-sm">Chat with Support</span>
+        💬 <span className="font-semibold text-sm">Chat</span>
       </button>
     </div>
   );
