@@ -47,7 +47,7 @@ const MapController = ({ deliveryLoc, customerLoc, isAutoRotate, rotation }) => 
 
 const CustomerChat = () => {
   const { orderId } = useParams();
-  const { user, axios } = useAppContext();
+  const { user, axios,getUserHeaders } = useAppContext();
   const socketRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -110,15 +110,26 @@ const CustomerChat = () => {
     return () => socket.disconnect();
   }, [orderId, user?._id]);
 
-  useEffect(() => {
+ useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const { data } = await axios.get(`/api/order/${orderId}`);
-        if (data.success) setOrder(data.order);
-      } catch { toast.error("Order not found"); }
+        // ✅ The headers object must be INSIDE the parentheses
+        const { data } = await axios.get(`/api/order/${orderId}`, {
+          headers: getUserHeaders()
+        });
+
+        if (data.success) {
+          setOrder(data.order);
+        }
+      } catch (error) {
+        // It's helpful to log the error to see if it's a 401 or a 404
+        console.error("Order Fetch Error:", error);
+        toast.error("Order not found"); 
+      }
     };
-    fetchOrder();
-  }, [orderId, axios]);
+
+    if (orderId) fetchOrder();
+  }, [orderId, axios, getUserHeaders]); 
 
   useEffect(() => {
     if (!deliveryLocation || !customerLocation) return;
