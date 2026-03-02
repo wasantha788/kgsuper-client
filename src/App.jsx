@@ -70,6 +70,7 @@ const App = () => {
         {/* 🌐 PUBLIC WEBSITE */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/products" element={<AllProducts />} />
           <Route path="/products/:category" element={<ProductCategory />} />
           <Route path="/product/:id" element={<ProductDetails />} />
