@@ -13,22 +13,24 @@ export const AppContextProvider = ({ children }) => {
   const navigate = useNavigate();
   const currency = import.meta.env.VITE_CURRENCY;
 
-  // --- HELPERS ---
-  const getUserHeaders = () => {
+  // --- HELPERS (Corrected to match your backend) ---
+const getUserHeaders = () => {
   const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  // Change 'Authorization' to 'token' to match your Backend req.headers.token
+  return token ? { token: token } : {};
 };
 
 const getSellerHeaders = () => {
   const token = localStorage.getItem("sellerToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  // Change 'Authorization' to 'seller_token'
+  return token ? { seller_token: token } : {};
 };
 
 const getDeliveryHeaders = () => {
   const token = localStorage.getItem("deliveryToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  // Ensure your backend delivery middleware uses this exact key
+  return token ? { delivery_token: token } : {};
 };
-
   // --- STATE ---
   const [user, setUser] = useState(null);
   const [isSeller, setIsSeller] = useState(false);
