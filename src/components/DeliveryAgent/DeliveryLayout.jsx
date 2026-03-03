@@ -33,20 +33,33 @@ const DeliveryLayout = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Top Navbar */}
-      <header className="flex items-center bg-white border-b border-gray-200 p-4 md:p-6 sticky top-0 z-50">
-        <h1 className="text-lg font-semibold text-gray-700 hidden md:block">
+      <header className="relative flex items-center justify-between bg-white border-b border-gray-200 p-4 md:p-6 sticky top-0 z-50">
+
+        {/* Left - Logo */}
+        <div className="flex items-center">
+          <img
+            src={assets.logo}
+            alt="logo"
+            className="cursor-pointer w-20 md:w-24"
+          />
+        </div>
+
+        {/* Center - Title */}
+        <h1 className="absolute left-1/2 transform -translate-x-1/2 text-lg md:text-xl font-semibold text-gray-700">
           Delivery Dashboard
         </h1>
 
-        {/* Logout button */}
-        <button
-          onClick={logout}
-          className="ml-auto bg-white border border-red-200 text-red-600 rounded-lg text-sm px-4 py-2 hover:bg-red-50 transition-colors font-medium"
-        >
-          Logout
-        </button>
-      </header>
+        {/* Right - Logout */}
+        <div>
+          <button
+            onClick={logout}
+            className="bg-white border border-red-200 text-red-600 rounded-lg text-sm px-4 py-2 hover:bg-red-50 transition-colors font-medium"
+          >
+            Logout
+          </button>
+        </div>
 
+      </header>
       {/* Main Container */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
@@ -58,10 +71,9 @@ const DeliveryLayout = () => {
                 key={item.name}
                 end={item.path === "/delivery"}
                 className={({ isActive }) =>
-                  `flex items-center py-3 px-4 gap-3 transition-all duration-200 group ${
-                    isActive
-                      ? "bg-primary/5 text-primary border-r-4 border-primary"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                  `flex items-center py-3 px-4 gap-3 transition-all duration-200 group ${isActive
+                    ? "bg-primary/5 text-primary border-r-4 border-primary"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                   }`
                 }
               >
