@@ -72,6 +72,7 @@ const DeliveryDashboard = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isScrollingRefresh, setIsScrollingRefresh] = useState(false); // 1. isScrollingRefresh state
   const socketRef = useRef(null);
 
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -88,6 +89,25 @@ const DeliveryDashboard = () => {
       toast.error("Not connected to server");
     }
   };
+
+  /* ---------------- SCROLL LISTENER ---------------- */
+  // 2. useEffect with Scroll Listener
+  useEffect(() => {
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      
+      // Trigger when user is 5px from the bottom
+      if (scrollTop + clientHeight >= scrollHeight - 5) {
+        if (!isScrollingRefresh && socketRef.current?.connected) {
+          setIsScrollingRefresh(true);
+          socketRef.current.emit("registerDeliveryBoy", user._id);
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [user?._id, isScrollingRefresh]);
 
   useEffect(() => {
     if (!user?._id) return;
@@ -106,10 +126,10 @@ const DeliveryDashboard = () => {
     socket.on("myOrders", (data) => {
       setOrders(data);
       setLoading(false);
+      setIsScrollingRefresh(false); // 4. Socket Reset
     });
 
     socket.on("newDeliveryOrder", (order) => {
-      // Auto-update the list when a broadcast arrives
       setOrders((prev) => prev.some((o) => o._id === order._id) ? prev : [order, ...prev]);
       toast.success("New delivery request nearby! 🚴", { icon: '📦' });
     });
@@ -118,7 +138,6 @@ const DeliveryDashboard = () => {
       setOrders((prev) => prev.map((o) => (o._id === updated._id ? updated : o)));
     });
 
-    // --- Add this listener in your Delivery Dashboard useEffect ---
     socket.on("orderRemoved", ({ orderId }) => {
       setOrders((prev) => prev.filter((o) => o._id !== orderId));
     });
@@ -133,7 +152,6 @@ const DeliveryDashboard = () => {
     socketRef.current.emit("accept-order", { orderId, deliveryBoyId: user._id });
     toast.success("Order accepted!");
   };
-  
 
   const rejectOrder = (orderId) => {
     if (!socketRef.current) return;
@@ -184,8 +202,6 @@ const DeliveryDashboard = () => {
     }
   };
 
-
-
   const myOrders = orders.filter(o => 
     o.assignedDeliveryBoy === user._id || o.assignedDeliveryBoy?._id === user._id
   );
@@ -211,7 +227,6 @@ const DeliveryDashboard = () => {
             </div>
         </div>
         
-        {/* REFRESH BUTTON */}
         <button 
             onClick={handleManualRefresh}
             className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-2xl shadow-sm hover:bg-gray-50 active:scale-95 transition-all text-sm font-bold text-gray-600"
@@ -268,6 +283,14 @@ const DeliveryDashboard = () => {
                 </div>
             </div>
           ))
+      )}
+
+      {/* 3. Loading Indicator for Scroll */}
+      {isScrollingRefresh && (
+        <div className="flex flex-col items-center justify-center py-8 space-y-2">
+          <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Checking for new tasks...</p>
+        </div>
       )}
 
       {/* OTP MODAL */}
