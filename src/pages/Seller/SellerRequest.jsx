@@ -12,7 +12,7 @@ export default function SellerRequest() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const API_URL = "https://kgsuper-client-production.up.railway.app";
+  const API_URL = "https://kgsuper-server-production.up.railway.app";
 
   // --- Fetch all seller requests ---
   const fetchAllRequests = async () => {

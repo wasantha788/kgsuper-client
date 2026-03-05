@@ -175,7 +175,7 @@ const Orders = () => {
   // ---------------- SOCKET.IO ----------------
   useEffect(() => {
     if (!user?._id) return;
-    const socket = io("https://kgsuper-client-production.up.railway.app", {
+    const socket = io("https://kgsuper-server-production.up.railway.app", {
       transports: ["websocket"],
       withCredentials: true,
     });
