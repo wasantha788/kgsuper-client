@@ -177,11 +177,12 @@ const Orders = () => {
 
   // ---------------- SOCKET.IO ----------------
   useEffect(() => {
-     if (!token) return;
-    const socket = io("https://kgsuper-server-production.up.railway.app", {
-      transports: ["websocket"],
-      withCredentials: true,
-    });
+  if (!token) return;
+
+  const socket = io("https://kgsuper-server-production.up.railway.app", {
+    transports: ["websocket", "polling"],
+    withCredentials: true,
+  });
     socketRef.current = socket;
 
     socket.on("connect", () => setIsLive(true));
