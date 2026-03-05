@@ -12,7 +12,7 @@ const STATUS_OPTIONS = [
   "Cancelled",
 ];
 
-/* ---------------- ORDER PREVIEW (Pure UI) ---------------- */
+/* ---------------- ORDER PREVIEW ---------------- */
 const OrderPreview = ({ order, currency }) => {
   return (
     <div className="space-y-3 text-sm text-gray-700">
@@ -72,8 +72,11 @@ const DeliveryDashboard = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isScrollingRefresh, setIsScrollingRefresh] = useState(false); // 1. isScrollingRefresh state
+  const [isScrollingRefresh, setIsScrollingRefresh] = useState(false);
   const socketRef = useRef(null);
+  
+  // Track if refresh was manual to show/hide specific toasts
+  const isManualRefreshing = useRef(false);
 
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [emailOtp, setEmailOtp] = useState("");
@@ -83,23 +86,23 @@ const DeliveryDashboard = () => {
   // Manual Refresh Function
   const handleManualRefresh = () => {
     if (socketRef.current?.connected) {
+      isManualRefreshing.current = true;
       socketRef.current.emit("registerDeliveryBoy", user._id);
-      toast("Syncing live data...", { icon: '🔄', duration: 1000 });
+      toast("Syncing live data...", { icon: '🔄', id: "sync-toast" });
     } else {
       toast.error("Not connected to server");
     }
   };
 
   /* ---------------- SCROLL LISTENER ---------------- */
-  // 2. useEffect with Scroll Listener
   useEffect(() => {
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-      
-      // Trigger when user is 5px from the bottom
       if (scrollTop + clientHeight >= scrollHeight - 5) {
         if (!isScrollingRefresh && socketRef.current?.connected) {
           setIsScrollingRefresh(true);
+          // Scroll refresh does NOT trigger the manual toast
+          isManualRefreshing.current = false; 
           socketRef.current.emit("registerDeliveryBoy", user._id);
         }
       }
@@ -109,6 +112,7 @@ const DeliveryDashboard = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [user?._id, isScrollingRefresh]);
 
+  /* ---------------- SOCKET CORE ---------------- */
   useEffect(() => {
     if (!user?._id) return;
 
@@ -126,12 +130,25 @@ const DeliveryDashboard = () => {
     socket.on("myOrders", (data) => {
       setOrders(data);
       setLoading(false);
-      setIsScrollingRefresh(false); // 4. Socket Reset
+      setIsScrollingRefresh(false);
+      
+      // Only show "Updated" toast if the user clicked the button
+      if (isManualRefreshing.current) {
+        toast.success("Orders updated", { id: "sync-toast" });
+        isManualRefreshing.current = false;
+      }
     });
 
     socket.on("newDeliveryOrder", (order) => {
-      setOrders((prev) => prev.some((o) => o._id === order._id) ? prev : [order, ...prev]);
-      toast.success("New delivery request nearby! 🚴", { icon: '📦' });
+      setOrders((prev) => {
+        const exists = prev.some((o) => o._id === order._id);
+        if (!exists) {
+          // Only notify if it's a brand new order not already in view
+          toast.success("New delivery request nearby! 🚴", { icon: '📦', duration: 3000 });
+          return [order, ...prev];
+        }
+        return prev;
+      });
     });
 
     socket.on("orderUpdated", (updated) => {
@@ -147,6 +164,7 @@ const DeliveryDashboard = () => {
     };
   }, [user?._id, backendUrl]);
 
+  /* ---------------- ACTIONS ---------------- */
   const acceptOrder = (orderId) => {
     if (!socketRef.current) return;
     socketRef.current.emit("accept-order", { orderId, deliveryBoyId: user._id });
@@ -252,7 +270,7 @@ const DeliveryDashboard = () => {
           </section>
       )}
 
-      {/* SECTION: ASSIGNED TO ME */}
+      {/* SECTION: ACTIVE DELIVERIES */}
       <h3 className="text-xs font-black text-gray-400 mb-4 tracking-widest uppercase">Active Deliveries</h3>
       {myOrders.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
@@ -271,7 +289,7 @@ const DeliveryDashboard = () => {
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
 
-                    <Link to={`/delivery/order/${order._id}`} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2">
+                    <Link to={`/delivery/order/${order._id}`} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 text-center justify-center">
                         TRACKING & CHAT
                     </Link>
 
@@ -285,7 +303,7 @@ const DeliveryDashboard = () => {
           ))
       )}
 
-      {/* 3. Loading Indicator for Scroll */}
+      {/* BOTTOM SPINNER */}
       {isScrollingRefresh && (
         <div className="flex flex-col items-center justify-center py-8 space-y-2">
           <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
