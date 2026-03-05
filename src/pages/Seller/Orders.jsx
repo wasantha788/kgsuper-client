@@ -59,7 +59,7 @@ const Orders = () => {
     setLoading(true);
     try {
       const { data } = await axios.get("/api/order/seller", {
-        headers: { Authorization: `Bearer ${token}` },
+           headers: { seller_token: token },
       });
       if (data.success) setOrders(data.orders || []);
       else {
@@ -112,17 +112,19 @@ const Orders = () => {
       const pdfBase64 = doc.output('datauristring').split(',')[1];
 
       // 3. Send to Backend
-      const { data } = await axios.post(
-        "/api/order/send-receipt",
-        {
-          orderId: order._id,
-          email: order.address.email,
-          orderDetails: order,
-          pdfData: pdfBase64, // Sending the string to backend
-          fileName: `Receipt_${order._id}.pdf`
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+     const { data } = await axios.post(
+  "/api/order/send-receipt",
+  {
+    orderId: order._id,
+    email: order.address.email,
+    orderDetails: order,
+    pdfData: pdfBase64,
+    fileName: `Receipt_${order._id}.pdf`
+  },
+  {
+    headers: { Authorization: `Bearer ${token}` }
+  }
+);
 
       if (data.success) toast.success("PDF Receipt sent to customer!");
     } catch (err) {
@@ -175,7 +177,7 @@ const Orders = () => {
 
   // ---------------- SOCKET.IO ----------------
   useEffect(() => {
-    if (!user?._id) return;
+     if (!token) return;
     const socket = io("https://kgsuper-server-production.up.railway.app", {
       transports: ["websocket"],
       withCredentials: true,
