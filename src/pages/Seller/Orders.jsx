@@ -59,7 +59,7 @@ const Orders = () => {
     setLoading(true);
     try {
       const { data } = await axios.get("/api/order/seller", {
-           headers: { seller_token: token },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (data.success) setOrders(data.orders || []);
       else {
@@ -112,19 +112,16 @@ const Orders = () => {
       const pdfBase64 = doc.output('datauristring').split(',')[1];
 
       // 3. Send to Backend
-     const { data } = await axios.post(
-  "/api/order/send-receipt",
-  {
-    orderId: order._id,
-    email: order.address.email,
-    orderDetails: order,
-    pdfData: pdfBase64,
-    fileName: `Receipt_${order._id}.pdf`
-  },
-  {
-    headers: { Authorization: `Bearer ${token}` }
-  }
-);
+      const { data } = await axios.post(
+        "/api/order/send-receipt",
+        {
+          email: order.address.email,
+          orderDetails: order,
+          pdfData: pdfBase64, // Sending the string to backend
+          fileName: `Receipt_${order._id}.pdf`
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (data.success) toast.success("PDF Receipt sent to customer!");
     } catch (err) {
@@ -177,12 +174,11 @@ const Orders = () => {
 
   // ---------------- SOCKET.IO ----------------
   useEffect(() => {
-  if (!token) return;
-
-  const socket = io("https://kgsuper-server-production.up.railway.app", {
-    transports: ["websocket", "polling"],
-    withCredentials: true,
-  });
+    if (!user?._id) return;
+    const socket = io("https://kgsuper-client-production.up.railway.app", {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
     socketRef.current = socket;
 
     socket.on("connect", () => setIsLive(true));
@@ -336,23 +332,27 @@ const Orders = () => {
                     {order.address?.firstName} {order.address?.lastName}
                   </p>
 
-                  {/* Address & Phone - No </div> in the middle! */}
+                  {/* Address - Only show comma if street exists */}
                   <p className="text-gray-600">
-                    {order.address?.street}, {order.address?.city}
+                    {order.address?.street}{order.address?.street && order.address?.city ? ", " : ""}{order.address?.city}
                   </p>
 
-                  {/* Phone Number */}
-                  <a
-                    href={`tel:${order.address?.phone}`}
-                    className="font-semibold text-gray-800 hover:text-blue-600 transition-colors block"
-                  >
-                    {order.address?.phone}
-                  </a>
+                  {/* Phone Number - The check you already have is perfect */}
+                  {order.address?.phone && (
+                    <a
+                      href={`tel:${order.address.phone}`}
+                      className="font-semibold text-gray-800 hover:text-blue-600 transition-colors block"
+                    >
+                      📞 {order.address.phone}
+                    </a>
+                  )}
 
                   {/* Email */}
-                  <p className="text-blue-600 font-medium italic">
-                    {order.address?.email}
-                  </p>
+                  {order.address?.email && (
+                    <p className="text-blue-600 font-medium italic">
+                      {order.address.email}
+                    </p>
+                  )}
                 </div>
                 {/* DELIVERY BOY INFO */}
                 {order.assignedDeliveryBoy && (

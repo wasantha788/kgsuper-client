@@ -12,7 +12,7 @@ export default function SellerRequest() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const API_URL = "https://kgsuper-server-production.up.railway.app";
+  const API_URL = "http://localhost:4000";
 
   // --- Fetch all seller requests ---
   const fetchAllRequests = async () => {
@@ -220,8 +220,8 @@ export default function SellerRequest() {
         </div>
       )}
 
-      {/* HEADER & SEARCH */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-6 md:px-12">
+        {/* SEARCH HEADER - Lowered Z-index to z-0 or z-[1] */}
+      <header className="sticky top-0 z-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-6 md:px-12">
         <div className="max-w-6xl mx-auto flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-black text-gray-900">Master Request List</h1>
@@ -236,7 +236,7 @@ export default function SellerRequest() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by product, seller name or email..."
+            placeholder="Search..."
             className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -312,16 +312,16 @@ export default function SellerRequest() {
                 )}
               </div>
 
-              {/* Delete Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation(); // prevent opening modal
-                  handleDelete(product._id);
-                }}
-                className="absolute top-3 right-3 z-10 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg"
-              >
-                <X className="w-4 h-4" />
-              </button>
+                   {/* DELETE BUTTON - Set Z-index to 0 to ensure it stays below your main navbar */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); 
+                handleDelete(product._id);
+              }}
+              className="absolute top-3 right-3 z-0 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg transition-transform hover:scale-110"
+            >
+              <X className="w-4 h-4" />
+            </button>
             </div>
           ))
         )}
