@@ -127,6 +127,11 @@ const DeliveryDashboard = () => {
         socket.emit("registerDeliveryBoy", user._id);
     });
 
+    socket.emit("join_delivery", {
+      id: user._id,
+      name: user.name
+    });
+
     socket.on("myOrders", (data) => {
       setOrders(data);
       setLoading(false);

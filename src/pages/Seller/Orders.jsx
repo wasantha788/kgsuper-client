@@ -26,6 +26,7 @@ const Orders = () => {
   const [isLive, setIsLive] = useState(false);
   const [countdowns, setCountdowns] = useState({}); // Stores { orderId: seconds Remaining }
   const socketRef = useRef(null);
+  const [liveDeliveryCount, setLiveDeliveryCount] = useState(0);
 
   const token = user?.token;
 
@@ -115,7 +116,6 @@ const Orders = () => {
       const { data } = await axios.post(
         "/api/order/send-receipt",
         {
-          orderId: order._id,
           email: order.address.email,
           orderDetails: order,
           pdfData: pdfBase64, // Sending the string to backend
@@ -185,6 +185,10 @@ const Orders = () => {
     socket.on("connect", () => setIsLive(true));
     socket.on("disconnect", () => setIsLive(false));
     socket.emit("join_seller");
+
+    socket.on("deliveryBoyCount", (count) => {
+      setLiveDeliveryCount(count);
+});
 
     socket.on("orderAcceptedByDelivery", ({ orderId, deliveryBoy }) => {
       setCountdowns((prev) => {
@@ -301,7 +305,10 @@ const Orders = () => {
             <h2 className="text-3xl font-bold text-gray-800">Seller Orders</h2>
             <div className="flex items-center gap-2 px-3 py-1 bg-white border rounded-full shadow-sm">
               <div className={`w-2.5 h-2.5 rounded-full ${isLive ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
-              <span className="text-xs font-medium text-gray-600">{isLive ? "Live" : "Offline"}</span>
+              <span className="text-xs font-medium text-gray-600">
+                {isLive ? `Live Riders: ${liveDeliveryCount}` : "Offline"}
+              </span>
+
             </div>
           </div>
           <div className="flex gap-3">
