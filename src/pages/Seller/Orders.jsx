@@ -116,6 +116,7 @@ const Orders = () => {
       const { data } = await axios.post(
         "/api/order/send-receipt",
         {
+          orderId: order._id,
           email: order.address.email,
           orderDetails: order,
           pdfData: pdfBase64, // Sending the string to backend
