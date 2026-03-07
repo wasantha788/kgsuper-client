@@ -23,6 +23,9 @@ const Cart = () => {
   const [showAddress, setShowAddress] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [paymentOption, setPaymentOption] = useState("COD");
+   const subtotal = getCartAmount();
+  const deliveryFee = subtotal >= 5000 ? 0 : 300;
+  const totalAmount = subtotal + deliveryFee;
 
   const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -261,21 +264,27 @@ const Cart = () => {
           <div className="space-y-3">
             <div className="flex justify-between text-base opacity-80">
               <span>Subtotal</span>
-              <span>{currency}{getCartAmount().toFixed(2)}</span>
+              <span>{currency}{subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-base">
-              <span className="opacity-80">Shipping</span>
-              <span className="text-green-500 font-bold uppercase text-xs bg-green-500/10 px-2 py-1 rounded">Free</span>
-            </div>
+
             <div className="flex justify-between text-base opacity-80">
-              <span>Tax (2%)</span>
-              <span>{currency}{(getCartAmount() * 0.02).toFixed(2)}</span>
+              <span>Delivery Fee</span>
+              <span>
+                {deliveryFee === 0
+                  ? "Free"
+                  : `${currency}${deliveryFee.toFixed(2)}`
+                }
+              </span>
             </div>
+            <span className="text-green-500 font-bold uppercase text-xs bg-green-500/10 px-2 py-1 rounded">Free delivery above 5000 LKR</span>
             <div className="flex justify-between text-xl font-bold pt-4 border-t border-main-border">
               <span>Total Amount</span>
-              <span className="text-primary">{currency}{(getCartAmount() * 1.02).toFixed(2)}</span>
+              <span className="text-primary">
+                {currency}{totalAmount.toFixed(2)}
+              </span>
             </div>
           </div>
+
 
           <button
             onClick={placeOrder}

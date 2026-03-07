@@ -76,63 +76,135 @@ const Orders = () => {
     }
   };
 
-  // ---------------- GENERATE & SEND PDF EMAIL ----------------
-  const sendEmailReceipt = async (order) => {
-    if (!order.address?.email) {
-      toast.error("No customer email found for this order.");
-      return;
-    }
-    setSendingEmail(order._id);
+    // ---------------- GENERATE & SEND PDF EMAIL ----------------
+const sendEmailReceipt = async (order) => {
+  if (!order.address?.email) {
+    toast.error("No customer email found for this order.");
+    return;
+  }
+  setSendingEmail(order._id);
 
-    try {
-      // 1. Generate PDF in memory
-      const doc = new jsPDF();
-      doc.setFontSize(18);
-      doc.text("Order Receipt", 14, 20);
-      doc.setFontSize(10);
-      doc.text(`Order ID: ${order._id}`, 14, 28);
-      doc.text(`Customer: ${order.address?.firstName} ${order.address?.lastName}`, 14, 34);
+  try {
+    const doc = new jsPDF();
+    const primaryColor = [26, 82, 118]; // Professional Blue (#1A5276)
 
-      const tableData = order.items?.map((item) => [
+    // --- 1. Header & Branding ---
+    doc.setFontSize(22);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("KG SUPER SHOP", 14, 20);
+
+    doc.setFontSize(9);
+    doc.setTextColor(127, 140, 141); // Slate Gray
+    doc.setFont("helvetica", "normal");
+    doc.text("Premium Grocery & Daily Essentials", 14, 25);
+    
+    // Aesthetic Divider Line
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setLineWidth(0.5);
+    doc.line(14, 28, 196, 28);
+
+    // --- 2. Order & Customer Info ---
+    doc.setFontSize(10);
+    doc.setTextColor(44, 62, 80);
+    
+    // Order ID (Shortened for cleaner look)
+    doc.text(`Order ID: #${order._id.toString().toUpperCase()}`, 14, 38);
+    doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`, 14, 44);
+    
+    // Customer Name & Email
+    doc.setFont("helvetica", "bold");
+    doc.text(`Customer: ${order.address?.firstName} ${order.address?.lastName}`, 14, 50);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(26, 82, 118); // Blue for the email
+    doc.text(`Email: ${order.address?.email}`, 14, 55);
+
+    // --- 3. Items Table Logic ---
+    let subtotal = 0;
+    const tableData = order.items?.map((item) => {
+      const price = item.product?.offerPrice || item.product?.price || 0;
+      const itemTotal = item.quantity * price;
+      subtotal += itemTotal;
+      return [
         item.product?.name || "Product",
         item.quantity,
-        `${currency}${item.product?.price || 0}`,
-        `${currency}${(item.quantity * (item.product?.price || 0)).toFixed(2)}`,
-      ]);
+        `${currency}${price.toFixed(2)}`,
+        `${currency}${itemTotal.toFixed(2)}`,
+      ];
+    });
 
-      autoTable(doc, {
-        startY: 40,
-        head: [["Product", "Qty", "Price", "Total"]],
-        body: tableData,
-      });
+    // Delivery logic: 300 LKR unless subtotal >= 5000
+    const deliveryFee = subtotal >= 5000 ? 0 : 300;
 
-      doc.text(`Grand Total: ${currency}${order.amount.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 10);
+    autoTable(doc, {
+      startY: 62, // Adjusted to prevent overlap with header info
+      head: [["Description", "Qty", "Unit Price", "Total"]],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor, fontSize: 10, halign: 'center' },
+      columnStyles: {
+        0: { cellWidth: 100 },
+        1: { halign: 'center' },
+        2: { halign: 'right' },
+        3: { halign: 'right' },
+      },
+    });
 
-      // 2. Convert to Base64
-      // We strip the data URL prefix (e.g., "data:application/pdf;base64,")
-      const pdfBase64 = doc.output('datauristring').split(',')[1];
+    // --- 4. Summary Section ---
+    const finalY = doc.lastAutoTable.finalY + 10;
+    
+    doc.setFontSize(10);
+    doc.setTextColor(127, 140, 141);
+    doc.text("Subtotal:", 145, finalY, { align: 'right' });
+    doc.setTextColor(44, 62, 80);
+    doc.text(`${currency}${subtotal.toFixed(2)}`, 190, finalY, { align: 'right' });
 
-      // 3. Send to Backend
-      const { data } = await axios.post(
-        "/api/order/send-receipt",
-        {
-          orderId: order._id,
-          email: order.address.email,
-          orderDetails: order,
-          pdfData: pdfBase64, // Sending the string to backend
-          fileName: `Receipt_${order._id}.pdf`
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    doc.setTextColor(127, 140, 141);
+    doc.text("Delivery Fee:", 145, finalY + 7, { align: 'right' });
+    doc.setTextColor(44, 62, 80);
+    doc.text(deliveryFee === 0 ? "FREE" : `${currency}${deliveryFee.toFixed(2)}`, 190, finalY + 7, { align: 'right' });
 
-      if (data.success) toast.success("PDF Receipt sent to customer!");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to send PDF email");
-    } finally {
-      setSendingEmail(null);
+    // Grand Total
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("GRAND TOTAL:", 145, finalY + 17, { align: 'right' });
+    doc.text(`${currency}${order.amount.toFixed(2)}`, 190, finalY + 17, { align: 'right' });
+
+    // --- 5. Footer ---
+    const pageHeight = doc.internal.pageSize.height;
+    doc.setFontSize(11);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("Thanks for Contacting KG Super Shop!", 105, pageHeight - 25, { align: "center" });
+    
+    doc.setFontSize(8);
+    doc.setTextColor(127, 140, 141);
+    doc.text("This is a computer-generated receipt for your records.", 105, pageHeight - 20, { align: "center" });
+
+    // --- 6. Send Base64 to Backend ---
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+    const { data } = await axios.post(
+      "/api/order/send-receipt",
+      {
+        email: order.address.email,
+        orderDetails: order,
+        pdfData: pdfBase64,
+        fileName: `Receipt_${order._id}.pdf`
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (data.success) {
+      toast.success("Receipt emailed successfully!");
     }
-  };
-
+  } catch (err) {
+    console.error("PDF Send Error:", err);
+    toast.error(err.response?.data?.message || "Failed to send PDF receipt");
+  } finally {
+    setSendingEmail(null);
+  }
+};
   // ---------------- DOWNLOAD PDF ----------------
   const downloadPaidPDF = () => {
     try {
