@@ -31,8 +31,8 @@ export default function VerifyEmail() {
      
         setTimeout(() => {
           window.location.href = "https://kgsuper-client-production.up.railway.app/seller-request/login";
-          console.log("20 seconds passed.");
-        }, 20000);
+          console.log("10 seconds passed.");
+        }, 10000);
       })
       .catch((err) => {
         // If it's already success, don't show the error immediately
