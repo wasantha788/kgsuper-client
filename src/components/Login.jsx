@@ -97,7 +97,7 @@ const Login = () => {
               required
             />
           </div>
-        )}
+        
 
         {state === "register" ? (
           <p className="text-sm">
