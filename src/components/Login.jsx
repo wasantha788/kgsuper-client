@@ -9,6 +9,7 @@ const Login = () => {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [Address, setAddress]  =  React.useState("");
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
@@ -84,6 +85,19 @@ const Login = () => {
             required
           />
         </div>
+     
+          <div className="w-full">
+            <p>Address</p>
+            <input
+              onChange={(e) => setAddress(e.target.value)}
+              value={Address}
+              placeholder="Type here"
+              className="border border-gray-200 rounded w-full p-2 mt-1 outline-primary"
+              type="text"
+              required
+            />
+          </div>
+        )}
 
         {state === "register" ? (
           <p className="text-sm">
