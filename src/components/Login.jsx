@@ -1,6 +1,6 @@
-import React from "react";
-import { useAppContext } from "../context/AppContext";
-import toast from "react-hot-toast";
+import React from 'react';
+import { useAppContext } from '../context/AppContext';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const { setShowUserLogin, setUser, axios, navigate } = useAppContext();
@@ -9,24 +9,21 @@ const Login = () => {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [Address, setAddress] = React.useState("");
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
 
     try {
-      const { data } = await axios.post(`/api/user/${state}`, {
-        name,
-        email,
-        password,
-        address: Address,
-      });
+      const { data } = await axios.post(
+        `/api/user/${state}`,
+        { name, email, password }
+      );
 
       if (data.success) {
-        navigate("/");
+        navigate('/');
         setUser(data.user);
         setShowUserLogin(false);
-        toast.success(`Welcome ${data.user.name || "User"}!`);
+        toast.success(`Welcome ${data.user.name || 'User'}!`);
       } else {
         toast.error(data.message);
       }
@@ -87,20 +84,6 @@ const Login = () => {
             required
           />
         </div>
-
-        {state === "register" && (
-          <div className="w-full">
-            <p>Address</p>
-            <input
-              onChange={(e) => setAddress(e.target.value)}
-              value={Address}
-              placeholder="Type here"
-              className="border border-gray-200 rounded w-full p-2 mt-1 outline-primary"
-              type="text"
-              required
-            />
-          </div>
-        )}
 
         {state === "register" ? (
           <p className="text-sm">
