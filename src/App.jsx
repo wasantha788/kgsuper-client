@@ -67,7 +67,7 @@ const App = () => {
       <Toaster position="top-right" />
 
       <Routes>
-        {/* 🌐 PUBLIC WEBSITE */}
+        {/* PUBLIC WEBSITE */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -87,13 +87,13 @@ const App = () => {
 
            
 
-           {/* 📧 VERIFICATION PAGE (No Navbar - Outside MainLayout) */}
+           {/*  VERIFICATION PAGE) */}
         <Route path="/verify-email" element={<VerifyEmail />} />
           {/* Orders */}
         <Route path="/ordersassigned" element={<OrderAssigned />} />
         
 
-        {/* 🚚 DELIVERY */}
+        {/*  DELIVERY */}
         <Route element={<MainLayout />}>
           <Route path="/deliveryboys" element={<DeliveryBoys />} />
           <Route path="/delivery-tracking/:orderId" element={<DeliveryTracking />} />
@@ -102,7 +102,7 @@ const App = () => {
        
 
 
-        {/* 🧑‍💼 SELLER */}
+        {/*  SELLER */}
         <Route path="/seller" element={isSeller ? <SellerLayout /> : <SellerLogin />}>
           <Route index element={<AddProduct />} />
           <Route path="product-list" element={<ProductList />} />

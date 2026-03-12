@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  /* Define keys and Light Mode defaults */
+
   --color-primary: #4FBF67;
   --color-primary-dull: #3DAE55;
   
   /* Semantic Variables */
-  --color-main-bg: #f0fdf4;     /* Light green bg */
-  --color-main-border: #bbf7d0; /* green-200 */
-  --color-main-text: #166534;   /* green-800 */
+  --color-main-bg: #f0fdf4;     
+  --color-main-border: #bbf7d0; 
+  --color-main-text: #166534;   
   --color-card-bg: #ffffff;
 }
 
 @layer base {
   /* Dark Mode Value Swaps */
   .dark {
-    --color-main-bg: #0f172a;     /* Slate-900 */
-    --color-main-border: #1e293b; /* Slate-800 */
-    --color-main-text: #f1f5f9;   /* Slate-100 */
-    --color-card-bg: #1e293b;     /* Slate-800 */
-    --color-primary: #5ce67a;     /* Slightly brighter green for dark */
+    --color-main-bg: #285fde;     
+    --color-main-border: #1e293b; 
+    --color-main-text: #f1f5f9;   
+    --color-card-bg: #1e293b;     
+    --color-primary: #5ce67a;     
   }
 
   body {
