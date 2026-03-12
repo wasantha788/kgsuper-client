@@ -15,7 +15,7 @@
 @layer base {
   /* Dark Mode Value Swaps */
   .dark {
-    --color-main-bg: #285fde;     
+    --color-main-bg: #0f172a;     
     --color-main-border: #1e293b; 
     --color-main-text: #f1f5f9;   
     --color-card-bg: #1e293b;     
