@@ -241,9 +241,6 @@ function AdminRequestTable() {
                     <div className="text-[10px] text-slate-400 font-bold uppercase">Qty: {req.quantity}</div>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button onClick={() => handleDelete(req._id)} className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
-                      <XCircle className="w-5 h-5" />
-                    </button>
                   </td>
                 </tr>
               ))}
