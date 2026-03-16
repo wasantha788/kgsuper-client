@@ -215,7 +215,6 @@ function AdminRequestTable() {
                 <th className="px-8 py-5">Product Info</th>
                 <th className="px-6 py-5">Seller Details</th>
                 <th className="px-6 py-5">Inventory/Price</th>
-                <th className="px-8 py-5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -240,8 +239,7 @@ function AdminRequestTable() {
                     <div className="font-black text-slate-800">Rs. {req.price}</div>
                     <div className="text-[10px] text-slate-400 font-bold uppercase">Qty: {req.quantity}</div>
                   </td>
-                  <td className="px-8 py-6 text-right">
-                  </td>
+                
                 </tr>
               ))}
             </tbody>
