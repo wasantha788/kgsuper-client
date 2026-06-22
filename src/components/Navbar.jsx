@@ -46,25 +46,71 @@ const Navbar = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
-    const userMsg = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsTyping(true);
+ const handleSendMessage = async () => {
+  const message = input.trim();
 
-    try {
-      const { data } = await axios.post("/api/ai/chat", { message: input });
-      setMessages((prev) => [...prev, { role: "ai", content: data.reply }]);
-    } catch (error) {
-      setTimeout(() => {
-        setMessages((prev) => [...prev, { role: "ai", content: "Sorry, I'm offline. Try again later!" }]);
-      }, 1000);
-    } finally {
-      setIsTyping(false);
-    }
+  if (!message || isTyping) return;
+
+  const userMessage = {
+    role: "user",
+    content: message,
   };
 
+  setMessages((prev) => [
+    ...prev,
+    userMessage,
+  ]);
+
+  setInput("");
+  setIsTyping(true);
+
+
+  try {
+
+    const response = await axios.post(
+      "/api/ai/chat",
+      {
+        message: message,
+      }
+    );
+
+
+    setMessages((prev)=>[
+      ...prev,
+      {
+        role:"ai",
+        content:
+        response.data.reply ||
+        "I could not understand that."
+      }
+    ]);
+
+
+  } catch(error){
+
+    console.log(
+      "AI ERROR:",
+      error
+    );
+
+
+    setMessages((prev)=>[
+      ...prev,
+      {
+        role:"ai",
+        content:
+        "Sorry, I'm offline. Try again later!"
+      }
+    ]);
+
+  }
+  finally{
+
+    setIsTyping(false);
+
+  }
+
+};
   /* ================= CLICK OUTSIDE ================= */
   useEffect(() => {
     const handleClickOutside = (e) => {
