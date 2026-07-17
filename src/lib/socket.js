@@ -5,7 +5,7 @@ let socket;
 export const getSocket = () => {
     if (!socket) {
         // Replace with your actual backend URL
-        socket = io("https://kgsuper-server-production.up.railway.app"); 
+        socket = io("http://localhost:4000"); 
     }
     return socket;
 };

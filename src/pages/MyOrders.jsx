@@ -2,26 +2,40 @@ import React, { useState, useEffect } from "react";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import axios from "axios";
 
 const MyOrders = () => {
-  const { user, currency, isAdmin } = useAppContext();
+  // 💡 FIX: getUserHeaders ගෙන්වා ගන්නා ලදී. isAdmin වෙනුවට user object එකෙන්ම භූමිකාව පරීක්ෂා කරමු.
+  const { user, currency, axios, getUserHeaders } = useAppContext();
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Determine if the user has an Admin role safely
+  const isAdmin = user?.role === "Admin" || user?.isAdmin === true;
 
   // Fetch orders from the backend
   const fetchOrders = async () => {
     try {
-      if (!user?._id) return;
-      const url = isAdmin ? "/api/order" : "/api/order/user";
-      const { data } = await axios.get(url, { withCredentials: true });
+      const currentUserId = user?._id || user?.id; // ✅
+      if (!currentUserId) return;
+      setLoading(true);
+
+      // 💡 FIX: සාමාන්‍ය පරිශීලකයා සඳහා ඍජුවම නිවැරදි Endpoint එක භාවිතය සහ Headers ඇතුළත් කිරීම
+      const url = "api/order/my-orders/all";
+      const { data } = await axios.get(url, { 
+        headers: getUserHeaders(),
+        withCredentials: true 
+      });
+
       if (data.success) {
-        setOrders(data.orders);
+        setOrders(data.orders || []);
       } else {
         toast.error(data.message || "Failed to fetch orders");
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Error fetching orders");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,10 +49,13 @@ const MyOrders = () => {
       const { data } = await axios.put(
         `/api/order/cancel/${orderId}`,
         {},
-        { withCredentials: true }
+        { 
+          headers: getUserHeaders(),
+          withCredentials: true 
+        }
       );
       if (data.success) {
-        toast.success(data.message);
+        toast.success(data.message || "Order cancelled successfully");
         fetchOrders();
       } else {
         toast.error(data.message);
@@ -56,7 +73,7 @@ const MyOrders = () => {
       <span className="text-orange-600 font-bold">Pending</span>
     );
 
-  // Helper for Order Status Badge (The message from the Admin dropdown)
+  // Helper for Order Status Badge
   const getStatusBadge = (status) => {
     const styles = {
       "Order Placed": "bg-gray-100 text-gray-600",
@@ -73,12 +90,23 @@ const MyOrders = () => {
     );
   };
 
-  if (!orders || orders.length === 0)
+  // Loading Screen
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[70vh]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
+
+  // No Orders Screen
+  if (!orders || orders.length === 0) {
     return (
       <div className="flex justify-center items-center h-[70vh] px-4">
         <p className="text-gray-500 text-lg text-center">You have no orders yet.</p>
       </div>
     );
+  }
 
   return (
     <div className="mt-16 pb-20 flex flex-col items-center w-full bg-gray-50 min-h-screen">
@@ -90,7 +118,7 @@ const MyOrders = () => {
       <div className="w-full lg:max-w-5xl px-4 space-y-6">
         {orders.map((order, index) => (
           <div
-            key={index}
+            key={order._id || index}
             className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300"
           >
             {/* Header: ID & Meta */}
@@ -103,9 +131,9 @@ const MyOrders = () => {
                 {getStatusBadge(order.status)}
                 <div className="text-sm border-l pl-3 border-gray-200">
                   <p className="text-gray-500 font-medium">
-                    {new Date(order.createdAt).toLocaleDateString("en-GB", {
+                    {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-GB", {
                       day: 'numeric', month: 'short', year: 'numeric'
-                    })}
+                    }) : "N/A"}
                   </p>
                 </div>
               </div>
@@ -115,19 +143,21 @@ const MyOrders = () => {
 
             {/* Items List */}
             <div className="space-y-4">
-              {order.items.map((item, i) => (
+              {order.items?.map((item, i) => (
                 <div key={i} className="flex flex-col md:flex-row justify-between gap-4 last:border-none">
                   <div className="flex gap-4">
                     <img
-                      src={item.product?.image?.[0]}
-                      alt={item.product?.name}
+                      src={item.product?.image?.[0] || "/placeholder-image.png"} 
+                      alt={item.product?.name || "Product"}
                       className="w-20 h-20 rounded-xl border object-cover bg-gray-50"
                     />
                     <div>
-                      <h2 className="font-bold text-gray-900">{item.product?.name}</h2>
-                      <p className="text-sm text-gray-500">Quantity: <span className="text-gray-800 font-medium">{item.quantity}</span></p>
+                      <h2 className="font-bold text-gray-900">{item.product?.name || "Unknown Product"}</h2>
+                      <p className="text-sm text-gray-500">
+                        Quantity: <span className="text-gray-800 font-medium">{item.quantity}</span>
+                      </p>
                       <p className="text-sm font-bold text-green-600 mt-1">
-                        {currency} {((item.product?.offerPrice || item.product?.price) * item.quantity).toFixed(2)}
+                        {currency} {((item.product?.offerPrice || item.product?.price || 0) * item.quantity).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -142,11 +172,12 @@ const MyOrders = () => {
                   <span className="font-semibold text-gray-900">Payment:</span> {order.paymentType} ({getPaymentStatus(order.isPaid)})
                 </p>
                 <p className="text-sm text-gray-600 font-bold">
-                  Total Amount: <span className="text-lg text-gray-900">{currency}{order.amount}</span>
+                  Total Amount: <span className="text-lg text-gray-900">{currency}{Number(order.amount || 0).toFixed(2)}</span>
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                {/* 💡 FIX: Safe reference checking for isAdmin */}
                 {!isAdmin && order.status === "Order Placed" && (
                   <button
                     onClick={() => cancelOrder(order._id)}

@@ -4,7 +4,16 @@ import { useAppContext } from "../../context/AppContext";
 import toast from "react-hot-toast";
 
 const SellerLayout = () => {
-  const { axios, navigate } = useAppContext();
+  // ✅ Destructure everything you need
+  const { 
+    axios, 
+    navigate, 
+    isSeller, 
+    setIsSeller, 
+    setUser, 
+    getSellerHeaders,
+    Sellerlogout   // ← This is the logout function from context
+  } = useAppContext();
 
   const sidebarLinks = [
     { name: "Add Product", path: "/seller", icon: assets.add_icon },
@@ -14,22 +23,12 @@ const SellerLayout = () => {
     { name: "Seller Request", path: "/seller/seller-request", icon: assets.tracking },
   ];
 
-  const logout = async () => {
-    try {
-      const { data } = await axios.get("/api/seller/logout");
-      if (data.success) {
-        toast.success(data.message);
-        navigate("/");
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      toast.error(error.message);
-    }
+  // ✅ Use Sellerlogout directly from context
+  const handleLogout = () => {
+    Sellerlogout(navigate); // Pass navigate to redirect after logout
   };
 
   return (
-    // min-h-screen ensures the background always covers at least the full screen
     <div className="flex flex-col min-h-screen">
       {/* Top Navbar */}
       <div className="flex items-center justify-between px-4 md:px-8 border-b border-gray-300 py-3 bg-white sticky top-0 z-10">
@@ -44,7 +43,7 @@ const SellerLayout = () => {
         <div className="flex items-center gap-5 text-gray-600">
           <p>Hi! Admin</p>
           <button
-            onClick={logout}
+            onClick={handleLogout} // ✅ Now uses the correct function
             className="border border-gray-400 rounded-full text-sm px-4 py-1 hover:bg-gray-100 transition"
           >
             Logout
@@ -54,9 +53,7 @@ const SellerLayout = () => {
 
       {/* Sidebar + Main Content */}
       <div className="flex flex-1">
-        {/* Sidebar - Changed h-[95vh] to h-auto and added min-h-full */}
         <aside className="md:w-64 w-20 border-r border-gray-300 pt-4 flex flex-col bg-white min-h-full h-auto">
-          {/* Wrapper to keep sidebar links sticky if needed */}
           <div className="sticky top-20"> 
             {sidebarLinks.map((item) => (
               <NavLink
@@ -78,7 +75,6 @@ const SellerLayout = () => {
           </div>
         </aside>
 
-        {/* Main Outlet */}
         <main className="flex-1 p-4 md:p-8 bg-gray-50 overflow-y-auto">
           <Outlet />
         </main>

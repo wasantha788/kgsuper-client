@@ -1,54 +1,72 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
-import axios from "axios";
 import toast from "react-hot-toast";
-import QRCode from "react-qr-code";
+import { QRCodeCanvas } from "qrcode.react";
 
 const DeliveryTracking = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { currency,getUserHeaders} = useAppContext();
+  // ✅ getDeliveryHeaders භාවිතා කරන්න, axios instance එක ගන්න
+  const { currency, getDeliveryHeaders, axios, user } = useAppContext(); 
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
-  // Fetch order
-  const fetchOrder = async () => {
+  const fetchOrder = async (silent = false) => {
+    const currentUserId = user?._id || user?.id;
+    if (!currentUserId) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { data } = await axios.get(`/api/order/${orderId}`, {
-        headers: getUserHeaders(),
-        withCredentials: true,
+      if (!silent) setLoading(true);
+
+      // ✅ Base URL එක axios instance එකෙන්ම එනවා
+      const { data } = await axios.get(`/api/order/${orderId}`, { 
+        headers: getDeliveryHeaders(), // ✅ නිවැරදි headers
+        withCredentials: true 
       });
 
       if (data.success) {
         setOrder(data.order);
       } else {
-        toast.error(data.message || "Failed to fetch order");
+        if (!silent) toast.error(data.message || "Failed to fetch order");
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Error fetching order");
+      if (!silent) {
+        toast.error(error.response?.data?.message || "Error fetching order");
+      }
+      console.error("Tracking Error:", error.response || error);
     } finally {
       setLoading(false);
+      setIsFirstLoad(false);
     }
   };
 
-  // Auto-refresh
+  // Initial load + auto-refresh
   useEffect(() => {
     if (!orderId) return;
 
-    fetchOrder();
-    const interval = setInterval(fetchOrder, 10000);
-    return () => clearInterval(interval);
-  }, [orderId]);
+    // ✅ Silent = false for initial load
+    fetchOrder(false);
+    
+    const interval = setInterval(() => {
+      // ✅ Silent = true for background refresh (no toasts)
+      fetchOrder(true);
+    }, 10000);
 
-  // Navigate to chat
+    return () => clearInterval(interval);
+  }, [orderId, user]); // user changes -> re-run
+
   const navigateToChatRequest = () => {
     if (!order) return;
     navigate(`/delivery/chat-request/${order._id}`);
   };
 
-  if (loading) {
+  if (loading && isFirstLoad) {
     return (
       <div className="flex justify-center items-center h-[70vh]">
         <p className="text-gray-500 text-lg">Loading order details...</p>
@@ -59,7 +77,7 @@ const DeliveryTracking = () => {
   if (!order) {
     return (
       <div className="flex justify-center items-center h-[70vh]">
-        <p className="text-gray-500 text-lg">Order not found.</p>
+        <p className="text-gray-500 text-lg">Order not found or unauthenticated.</p>
       </div>
     );
   }
@@ -84,14 +102,12 @@ const DeliveryTracking = () => {
     <div className="min-h-screen bg-gray-50 py-16 px-4 flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-2 text-gray-800">Track Order</h1>
 
-      {/* QR Code */}
       <div className="mb-4">
-        <QRCode value={order._id} size={128} />
+        <QRCodeCanvas value={order._id} size={128} />
       </div>
 
       <p className="text-sm text-gray-500 mb-6">
-        Order ID:{" "}
-        <span className="font-mono text-gray-700">{order._id}</span>
+        Order ID: <span className="font-mono text-gray-700">{order._id}</span>
       </p>
 
       {/* Progress Bar */}
@@ -126,11 +142,8 @@ const DeliveryTracking = () => {
       <div className="w-full max-w-3xl bg-white rounded-2xl p-6 shadow-sm">
         <h2 className="text-lg font-bold mb-4">Order Items</h2>
         <div className="space-y-4">
-          {order.items.map((item, i) => (
-            <div
-              key={i}
-              className="flex gap-4 items-center border-b pb-3 last:border-b-0"
-            >
+          {order.items?.map((item, i) => (
+            <div key={i} className="flex gap-4 items-center border-b pb-3 last:border-b-0">
               <img
                 src={item.product?.image?.[0]}
                 alt={item.product?.name}
@@ -142,11 +155,7 @@ const DeliveryTracking = () => {
                   Quantity: <span className="font-medium">{item.quantity}</span>
                 </p>
                 <p className="text-sm font-bold text-green-600">
-                  {currency}
-                  {(
-                    (item.product?.offerPrice || item.product?.price) *
-                    item.quantity
-                  ).toFixed(2)}
+                  {currency} {((item.product?.offerPrice || item.product?.price) * item.quantity).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -156,29 +165,28 @@ const DeliveryTracking = () => {
         {/* Payment & Total */}
         <div className="mt-6 border-t pt-4 flex flex-col md:flex-row justify-between gap-4">
           <p className="text-sm text-gray-600">
-            Payment Type:{" "}
-            <span className="font-semibold text-gray-900">
-              {order.paymentType}
-            </span>
+            Payment Type: <span className="font-semibold text-gray-900">{order.paymentType}</span>
           </p>
-
           <p className="text-sm font-bold">
-            Total Amount:{" "}
-            <span className="text-lg text-gray-900">
-              {currency}
-              {order.amount}
-            </span>
+            Total Amount: <span className="text-lg text-gray-900">{currency} {order.amount}</span>
           </p>
         </div>
+
+        {/* Delivery Boy Info - if assigned */}
+        {order.assignedDeliveryBoy && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-xl">
+            <p className="text-sm font-semibold">🚴 Delivery Boy: {order.assignedDeliveryBoy.name}</p>
+            <p className="text-sm text-gray-600">📞 {order.assignedDeliveryBoy.phone}</p>
+          </div>
+        )}
       </div>
 
-      {/* 💬 Chat Button */}
+      {/* Chat Button */}
       <button
         onClick={navigateToChatRequest}
-        className="fixed bottom-6 right-6 px-7 py-4 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-2xl shadow-xl flex items-center gap-2 hover:scale-105 transition-all"
+        className="fixed bottom-6 right-6 px-7 py-4 rounded-full bg-linear-to-r from-green-500 to-emerald-600 text-white text-2xl shadow-xl flex items-center gap-2 hover:scale-105 transition-all"
       >
-        💬
-        <span className="font-semibold text-sm">Chat</span>
+        💬 <span className="font-semibold text-sm">Chat</span>
       </button>
     </div>
   );

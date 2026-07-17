@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import axios from "axios";
+import axios from "axios"; // Global instance
 import { io } from "socket.io-client";
 import { QRCodeCanvas } from "qrcode.react";
 import toast from "react-hot-toast";
+
+// 💡 FIX 2: Imported your application context hook 
+import { useAppContext } from "../../context/AppContext"; 
+
 import {
   Package,
-  ChevronRight,
   Calendar,
   MapPin,
   BarChart3,
@@ -16,6 +19,7 @@ import {
   Truck,
   UserCheck
 } from "lucide-react";
+
 import {
   BarChart,
   Bar,
@@ -36,6 +40,9 @@ const STATUS_OPTIONS = [
 ];
 
 const SellerDashboard = () => {
+  // 💡 FIX 1: Removed 'axios' from context destructuring to prevent shadowing the top import
+  const { user, currency, getUserHeaders, getSellerHeaders } = useAppContext();
+  
   const [orders, setOrders] = useState([]);
   const [leaders, setLeaders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,14 +63,15 @@ const SellerDashboard = () => {
     };
   }, [orders]);
 
-  const getStatusChartData = () => {
+  // 💡 FIX 4: Call this configuration inside a memo block to avoid multi-execution during render loops
+  const chartData = useMemo(() => {
     const counts = STATUS_OPTIONS.reduce((acc, status) => ({ ...acc, [status]: 0 }), {});
     orders.forEach(order => {
       const status = order.status || "Order Placed";
       counts[status] = (counts[status] || 0) + 1;
     });
     return STATUS_OPTIONS.map(status => ({ name: status, count: counts[status] }));
-  };
+  }, [orders]);
 
   const statusColors = {
     "Order Placed": "#facc15",
@@ -74,30 +82,36 @@ const SellerDashboard = () => {
   };
 
   const fetchData = async (silent = false) => {
-    if (!silent) setLoading(true);
-    setIsSyncing(true);
-    try {
-      const [ordersRes, leadersRes] = await Promise.all([
-        axios.get("https://kgsuper-server-production.up.railway.app/api/seller/orders"),
-        axios.get("https://kgsuper-server-production.up.railway.app/api/seller/top-delivery-boys"),
-      ]);
-      setOrders(ordersRes?.data?.data || []);
-      setLeaders((leadersRes?.data || []).map(boy => ({
-        ...boy,
-        totalDelivered: Number(boy.totalDelivered) || 0
-      })));
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setLoading(false);
-      setIsSyncing(false);
-    }
-  };
+  if (!silent) setLoading(true);
+  setIsSyncing(true);
+  try {
+    const headers = getSellerHeaders();
+    console.log("🔍 Headers sent:", headers); // Token එක බලන්න
 
+    const [ordersRes, leadersRes] = await Promise.all([
+      axios.get("api/seller/orders", { headers }),
+      axios.get("api/seller/top-delivery-boys", { headers }),
+    ]);
+
+    console.log("📦 Orders Response:", ordersRes.data); // Response එක බලන්න
+    setOrders(ordersRes?.data?.orders || []);
+    setLeaders((leadersRes?.data || []).map(boy => ({
+      ...boy,
+      totalDelivered: Number(boy.totalDelivered) || 0
+    })));
+  } catch (err) {
+    console.error("❌ Fetch error:", err.response || err);
+    toast.error(err.response?.data?.message || "Failed to load dashboard data");
+  } finally {
+    setLoading(false);
+    setIsSyncing(false);
+  }
+};
   useEffect(() => {
     fetchData();
-    socketRef.current = io("https://kgsuper-server-production.up.railway.app", { transports: ["websocket"] });
+    socketRef.current = io(import.meta.env.VITE_BACKEND_URL, {
+  transports: ["websocket"],
+  withCredentials: true });
     socketRef.current.on("orderUpdated", () => fetchData(true));
     socketRef.current.on("leaderboardUpdated", () => fetchData(true));
     return () => socketRef.current?.disconnect();
@@ -143,7 +157,7 @@ const SellerDashboard = () => {
 
         {/* STATS CARDS */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <StatCard icon={<DollarSign className="text-emerald-600"/>} label="Total Revenue" value={`LKR ${stats.totalEarnings.toLocaleString()}`} color="bg-emerald-50" />
+          <StatCard icon={<DollarSign className="text-emerald-600"/>} label="Total Revenue" value={`${currency || 'LKR'} ${stats.totalEarnings.toLocaleString()}`} color="bg-emerald-50" />
           <StatCard icon={<Truck className="text-blue-600"/>} label="Delivered" value={stats.deliveredCount} color="bg-blue-50" />
           <StatCard icon={<UserCheck className="text-purple-600"/>} label="Active Riders" value={stats.activeRiders} color="bg-purple-50" />
           <StatCard icon={<Package className="text-orange-600"/>} label="Total Orders" value={stats.totalOrders} color="bg-orange-50" />
@@ -159,16 +173,16 @@ const SellerDashboard = () => {
               </h3>
               <div className="h-48 sm:h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={getStatusChartData()}>
+                  <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
                     <YAxis axisLine={false} tickLine={false} hide />
                     <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', border: 'none' }} />
                     <Bar dataKey="count" radius={[8,8,0,0]} barSize={25}>
-                      {getStatusChartData().map((entry, index) => (
+                      {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={statusColors[entry.name]} />
                       ))}
-                    </Bar>                                
+                    </Bar>                                    
                   </BarChart>                                               
                 </ResponsiveContainer>
               </div>
@@ -212,7 +226,7 @@ const SellerDashboard = () => {
                   </div>
                   <div className="flex gap-3 mb-3 items-center">
                     <div className="bg-slate-50 p-1 rounded-xl border border-slate-100 shrink-0">
-                      <QRCodeCanvas value={`https://kgsuper-client-production.up.railway.app/delivery/${order._id}`} size={50} />
+                      <QRCodeCanvas value={`${import.meta.env.VITE_BACKEND_URL}/delivery/${order._id}`} size={50} />
                     </div>
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-1 text-xs font-bold text-slate-700">
@@ -223,7 +237,7 @@ const SellerDashboard = () => {
                         <Calendar size={12} /> {new Date(order.createdAt).toLocaleDateString()}
                       </div>
                       <div className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-                        <DollarSign size={12} /> LKR {(order.totalAmount || order.orderDetails?.totalAmount || 0).toLocaleString()}
+                        <DollarSign size={12} /> {currency || 'LKR'} {(order.totalAmount || order.orderDetails?.totalAmount || 0).toLocaleString()}
                       </div>
                     </div>
                   </div>

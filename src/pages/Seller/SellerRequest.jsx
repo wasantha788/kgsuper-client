@@ -12,13 +12,13 @@ export default function SellerRequest() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const API_URL = "https://kgsuper-server-production.up.railway.app";
+  //const API_URL = "http://localhost:4000";
 
   // --- Fetch all seller requests ---
   const fetchAllRequests = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(`${API_URL}/api/sellerRequest`);
+      const { data } = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/sellerRequest`);
       if (data.success) {
         const normalized = (data.products || []).map((p) => ({
           ...p,
@@ -54,7 +54,7 @@ export default function SellerRequest() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
-      await axios.delete(`${API_URL}/api/sellerRequest/${id}`);
+      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/sellerRequest/${id}`);
       setProducts((prev) => prev.filter((p) => p._id !== id));
       setFilteredProducts((prev) => prev.filter((p) => p._id !== id));
       if (selectedProduct?._id === id) setSelectedProduct(null);
@@ -74,7 +74,7 @@ export default function SellerRequest() {
     }
 
     try {
-      const { data } = await axios.patch(`${API_URL}/api/sellerRequest/update-status/${id}`, { status });
+      const { data } = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/sellerRequest/update-status/${id}`, { status });
       if (data.success) {
         setProducts((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
         setFilteredProducts((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
@@ -95,7 +95,7 @@ export default function SellerRequest() {
     // If img is object with url (Cloudinary)
     if (typeof img === "object" && img.url) return img.url;
     // If img is string (local fallback)
-    if (typeof img === "string") return `${API_URL}/${img.replace(/\\/g, "/")}`;
+    if (typeof img === "string") return `${import.meta.env.VITE_BACKEND_URL}/${img.replace(/\\/g, "/")}`;
     return noImage;
   };
 

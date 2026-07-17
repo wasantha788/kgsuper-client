@@ -289,7 +289,7 @@ const DeliveryDashboard = () => {
                     <select
                         value={order.status}
                         onChange={(e) => socketRef.current.emit("update-order-status", { orderId: order._id, status: e.target.value })}
-                        className="flex-1 min-w-[140px] border border-gray-300 px-4 py-2.5 rounded-xl text-sm font-bold bg-gray-50 focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 min-w-35 border border-gray-300 px-4 py-2.5 rounded-xl text-sm font-bold bg-gray-50 focus:ring-2 focus:ring-blue-500"
                     >
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>

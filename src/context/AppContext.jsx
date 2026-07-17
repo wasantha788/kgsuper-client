@@ -13,24 +13,22 @@ export const AppContextProvider = ({ children }) => {
   const navigate = useNavigate();
   const currency = import.meta.env.VITE_CURRENCY;
 
-  // --- HELPERS (Corrected to match your backend) ---
-const getUserHeaders = () => {
-  const token = localStorage.getItem("token");
-  // Change 'Authorization' to 'token' to match your Backend req.headers.token
-  return token ? { token: token } : {};
-};
+  // --- HELPERS ---
+  const getUserHeaders = () => {
+    const token = localStorage.getItem("token");
+    return token ? { token: token } : {};
+  };
 
-const getSellerHeaders = () => {
-  const token = localStorage.getItem("sellerToken");
-  // Change 'Authorization' to 'seller_token'
-  return token ? { seller_token: token } : {};
-};
+  const getSellerHeaders = () => {
+    const token = localStorage.getItem("sellerToken");
+    return token ? { token: token } : {}; // Backend එකේ req.headers.token කියවන්න ගැළපෙන ලෙස
+  };
 
-const getDeliveryHeaders = () => {
-  const token = localStorage.getItem("deliveryToken");
-  // Ensure your backend delivery middleware uses this exact key
-  return token ? { delivery_token: token } : {};
-};
+  const getDeliveryHeaders = () => {
+    const token = localStorage.getItem("deliveryToken");
+    return token ? { delivery_token: token } : {};
+  };
+
   // --- STATE ---
   const [user, setUser] = useState(null);
   const [isSeller, setIsSeller] = useState(false);
@@ -43,15 +41,12 @@ const getDeliveryHeaders = () => {
   // CRITICAL: Prevent sync before initial DB fetch is complete
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-
   // --- DARK MODE STATE ---
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage or system preference on initial load
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) return savedTheme === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
-
 
   // ---------------- DARK MODE EFFECT ----------------
   useEffect(() => {
@@ -63,47 +58,74 @@ const getDeliveryHeaders = () => {
       localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
-
   
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
   // ---------------- FETCH USER ----------------
   const fetchUser = async () => {
+    const token = localStorage.getItem("token");
+    
+    // 💡 Token එකක් නැත්නම් API call එකක් නොකර නවතින්න
+    if (!token) {
+      setUser(null);
+      setCartItems({});
+      setIsInitialLoad(false);
+      return;
+    }
+
     try {
       const { data } = await axios.get("/api/user/is-auth", { headers: getUserHeaders() });
       if (data.success) {
         setUser(data.user);
-        // Set state from DB - this is the "truth"
         setCartItems(data.user.cartItems || {});
       } else {
         setUser(null);
         setCartItems({});
       }
     } catch (error) {
-      console.error("Auth check failed", error);
+      console.log("User not logged in."); // Console clean තබා ගැනීමට
       setUser(null);
       setCartItems({});
     } finally {
-      // Data is now loaded from DB, safe to enable sync effect
       setIsInitialLoad(false);
     }
   };
 
-  
+ // ---------------- FETCH SELLER ----------------
+// AppContext.jsx හි fetchSeller
+const fetchSeller = async () => {
+  const token = localStorage.getItem("sellerToken");
+  if (!token) {
+    setIsSeller(false);
+    setUser(null);
+    return;
+  }
 
-  // ---------------- FETCH SELLER ----------------
-  const fetchSeller = async () => {
   try {
     const { data } = await axios.get("/api/seller/is-auth", { headers: getSellerHeaders() });
-    setIsSeller(!!data.success);
-  } catch (error) {
-    console.error("Seller auth failed", error);
+    if (data.success && data.seller) {
+      setIsSeller(true);
+      setUser(data.seller); // ✅ මෙහි _id ඇතුළත් වේ
+    } else {
+      setIsSeller(false);
+      setUser(null);
+    }
+  } catch {
     setIsSeller(false);
+    setUser(null);
   }
 };
 
   // ---------------- FETCH DELIVERY ----------------
   const fetchdelivery = async () => {
+    const token = localStorage.getItem("deliveryToken");
+    
+    // 💡 Token එකක් නැත්නම් API call එකක් නොකර නවතින්න
+    if (!token) {
+      setIsdelivery(false);
+      return;
+    }
+
     try {
       const { data } = await axios.get("/api/delivery/is-auth", {
         headers: getDeliveryHeaders()
@@ -111,6 +133,7 @@ const getDeliveryHeaders = () => {
       setIsdelivery(!!data.success);
       if (data.success && data.user) setUser(data.user);
     } catch {
+      console.log("Delivery boy not logged in.");
       setIsdelivery(false);
     }
   };
@@ -125,19 +148,39 @@ const getDeliveryHeaders = () => {
       localStorage.removeItem("deliveryToken");
       setUser(null);
       setIsdelivery(false);
-      setCartItems({}); // Clear cart on logout
-      setIsInitialLoad(true); // Reset guard for next user
+      setCartItems({}); 
+      setIsInitialLoad(true); 
       toast.success("Logged out successfully");
       if (redirect && nav) nav("/delivery-login");
     }
   };
 
+  // ---------------- LOGOUT SELLER ----------------
+const Sellerlogout = async (nav = null, redirect = true) => {
+  try {
+    // ✅ Use getSellerHeaders() NOT getDeliveryHeaders()
+    await axios.post("/api/seller/logout", {}, { headers: getSellerHeaders() });
+  } catch {
+    // ignore
+  } finally {
+    localStorage.removeItem("sellerToken");
+    localStorage.removeItem("sellerId");   // ✅ Also remove sellerId
+    setUser(null);
+    setIsSeller(false);                    // ✅ Reset seller state
+    setCartItems({}); 
+    setIsInitialLoad(true); 
+    toast.success("Logged out successfully");
+    if (redirect && nav) nav("/seller-login");
+  }
+};
+
+
+  
+
   // ---------------- SYNC CART TO DB ----------------
   useEffect(() => {
     const syncCart = async () => {
-      // Only sync if user exists AND we finished fetching initial data
       if (!user?._id || isInitialLoad) return;
-
       try {
         await axios.post("/api/cart/update", { 
           userId: user._id, 
@@ -152,7 +195,6 @@ const getDeliveryHeaders = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [cartItems, user?._id, isInitialLoad]);
 
-         
   // ---------------- CART HELPERS ----------------
   const addToCart = (itemId) => {
     setCartItems((prev) => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
@@ -238,7 +280,7 @@ const getDeliveryHeaders = () => {
         getUserHeaders,
         getSellerHeaders,
         getDeliveryHeaders,
-        isDarkMode, toggleDarkMode 
+        isDarkMode, toggleDarkMode ,Sellerlogout,
       }}
     >
       {children}
