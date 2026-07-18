@@ -1,4 +1,9 @@
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:4000");
+// Connect to BACKEND service URL
+const socket = io("https://kgsuper-server-production.up.railway.app", {
+  withCredentials: true,
+  transports: ["websocket"]
+});
+
 export default socket;

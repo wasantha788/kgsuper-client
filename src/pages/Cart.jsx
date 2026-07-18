@@ -27,7 +27,7 @@ const Cart = () => {
   const deliveryFee = subtotal >= 5000 ? 0 : 300;
   const totalAmount = subtotal + deliveryFee;
 
-  const API_URL = import.meta.env.VITE_API_URL || "";
+  const API_URL = import.meta.env.VITE_BACKEND_URL || "";
 
   useEffect(() => {
     if (!user) navigate("/");

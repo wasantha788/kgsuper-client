@@ -255,7 +255,7 @@ export default function SellerRequest() {
           filteredProducts.map((product) => (
             <div
               key={product._id}
-              className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group relative cursor-pointer"
+              className="bg-white rounded-4xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group relative cursor-pointer"
               onClick={() => setSelectedProduct(product)}
             >
               {/* Product Image */}
