@@ -15,21 +15,7 @@ const Login = () => {
   const [vehicleType, setVehicleType] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ------------------ Axios interceptor ------------------
-  useEffect(() => {
-    const interceptor = axios.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem("deliveryToken");
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
 
-    return () => axios.interceptors.request.eject(interceptor);
-  }, [axios]);
 
   // ------------------ Handle form submit ------------------
   const onSubmitHandler = async (event) => {

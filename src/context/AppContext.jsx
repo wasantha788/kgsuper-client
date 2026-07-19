@@ -116,26 +116,62 @@ const fetchSeller = async () => {
 
   // ---------------- FETCH DELIVERY ----------------
   const fetchdelivery = async () => {
-    const token = localStorage.getItem("deliveryToken");
-    
-    // 💡 Token එකක් නැත්නම් API call එකක් නොකර නවතින්න
-    if (!token) {
+  const token = localStorage.getItem("deliveryToken");
+
+  // 1️⃣ Token එක නැත්නම් නවතින්න
+  if (!token) {
+    setIsdelivery(false);
+    return;
+  }
+
+  // 2️⃣ Token එක Decode කර Role සහ Expiry පරීක්ෂා කරන්න
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+
+    // Role "delivery" නොවේ නම් Token එක ඉවත් කර නවතින්න
+    if (payload.role !== 'delivery') {
+      console.warn('Invalid delivery token: role is not "delivery"');
+      localStorage.removeItem('deliveryToken');
       setIsdelivery(false);
       return;
     }
 
-    try {
-      const { data } = await axios.get("/api/delivery/is-auth", {
-        headers: getDeliveryHeaders()
-      });
-      setIsdelivery(!!data.success);
-      if (data.success && data.user) setUser(data.user);
-    } catch {
-      console.log("Delivery boy not logged in.");
+    // Token එක කල් ඉකුත් වී ඇත්නම් ඉවත් කර නවතින්න
+    if (payload.exp && Date.now() >= payload.exp * 1000) {
+      console.warn('Delivery token expired');
+      localStorage.removeItem('deliveryToken');
       setIsdelivery(false);
+      return;
     }
-  };
+  } catch (error) {
+    // Decode කිරීමේදී දෝෂයක් ඇත්නම් (වලංගු නොවන Token)
+    console.error('Error decoding delivery token:', error);
+    localStorage.removeItem('deliveryToken');
+    setIsdelivery(false);
+    return;
+  }
 
+  // 3️⃣ Server එකට Request එක යවන්න
+  try {
+    const { data } = await axios.get('/api/delivery/is-auth', {
+      headers: getDeliveryHeaders() // Authorization Header එක එකතු කරයි
+    });
+
+    if (data.success) {
+      setIsdelivery(true);
+      if (data.user) setUser(data.user);
+    } else {
+      // Server එකෙන් success: false ආවොත් Token එක අවලංගු කරන්න
+      setIsdelivery(false);
+      localStorage.removeItem('deliveryToken');
+    }
+  } catch (error) {
+    // 401 හෝ වෙනත් දෝෂයක් ඇත්නම්
+    console.log('Delivery boy not logged in.');
+    setIsdelivery(false);
+    localStorage.removeItem('deliveryToken');
+  }
+};
   // ---------------- LOGOUT ----------------
   const logout = async (nav = null, redirect = true) => {
     try {
