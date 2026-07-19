@@ -4,43 +4,49 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 const MyOrders = () => {
-  // 💡 FIX: getUserHeaders ගෙන්වා ගන්නා ලදී. isAdmin වෙනුවට user object එකෙන්ම භූමිකාව පරීක්ෂා කරමු.
   const { user, currency, axios, getUserHeaders } = useAppContext();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Determine if the user has an Admin role safely
-  const isAdmin = user?.role === "Admin" || user?.isAdmin === true;
+  // ✅ Check if user is admin (to hide cancel button for admins)
+  const isAdmin = user?.role === "admin" || user?.isAdmin === true;
 
   // Fetch orders from the backend
   const fetchOrders = async () => {
     try {
-      const currentUserId = user?._id || user?.id; // ✅
-      if (!currentUserId) return;
+      const currentUserId = user?._id || user?.id;
+      if (!currentUserId) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
 
-      // 💡 FIX: සාමාන්‍ය පරිශීලකයා සඳහා ඍජුවම නිවැරදි Endpoint එක භාවිතය සහ Headers ඇතුළත් කිරීම
-      const url = "api/order/my-orders/all";
-      const { data } = await axios.get(url, { 
+      const { data } = await axios.get("/api/order/my-orders/all", {
         headers: getUserHeaders(),
-        withCredentials: true 
+        withCredentials: true,
       });
 
       if (data.success) {
         setOrders(data.orders || []);
       } else {
         toast.error(data.message || "Failed to fetch orders");
+        setOrders([]);
       }
     } catch (error) {
+      console.error("Fetch orders error:", error);
       toast.error(error.response?.data?.message || "Error fetching orders");
+      setOrders([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user) fetchOrders();
+    if (user) {
+      fetchOrders();
+    }
   }, [user]);
 
   // Cancel order logic (only for 'Order Placed' status)
@@ -49,18 +55,20 @@ const MyOrders = () => {
       const { data } = await axios.put(
         `/api/order/cancel/${orderId}`,
         {},
-        { 
+        {
           headers: getUserHeaders(),
-          withCredentials: true 
+          withCredentials: true,
         }
       );
+
       if (data.success) {
         toast.success(data.message || "Order cancelled successfully");
-        fetchOrders();
+        fetchOrders(); // Refresh orders list
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "Failed to cancel order");
       }
     } catch (error) {
+      console.error("Cancel order error:", error);
       toast.error(error.response?.data?.message || "Failed to cancel order");
     }
   };
@@ -77,14 +85,18 @@ const MyOrders = () => {
   const getStatusBadge = (status) => {
     const styles = {
       "Order Placed": "bg-gray-100 text-gray-600",
-      "Packing": "bg-blue-100 text-blue-600",
-      "Shipped": "bg-purple-100 text-purple-600",
+      Processing: "bg-blue-100 text-blue-600",
+      Packing: "bg-blue-100 text-blue-600",
       "Out for delivery": "bg-orange-100 text-orange-600",
-      "Delivered": "bg-green-100 text-green-600",
-      "Cancelled": "bg-red-100 text-red-600",
+      Delivered: "bg-green-100 text-green-600",
+      Cancelled: "bg-red-100 text-red-600",
     };
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${styles[status] || "bg-gray-100"}`}>
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+          styles[status] || "bg-gray-100 text-gray-600"
+        }`}
+      >
         {status}
       </span>
     );
@@ -111,7 +123,9 @@ const MyOrders = () => {
   return (
     <div className="mt-16 pb-20 flex flex-col items-center w-full bg-gray-50 min-h-screen">
       <div className="text-center mb-8 px-4">
-        <p className="text-3xl font-bold text-gray-800 uppercase tracking-tight">My Orders</p>
+        <p className="text-3xl font-bold text-gray-800 uppercase tracking-tight">
+          My Orders
+        </p>
         <div className="w-16 h-1.5 bg-green-500 mx-auto mt-2 rounded-full"></div>
       </div>
 
@@ -124,16 +138,22 @@ const MyOrders = () => {
             {/* Header: ID & Meta */}
             <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 mb-6">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Order ID</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  Order ID
+                </p>
                 <p className="text-sm font-mono text-gray-700">{order._id}</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 {getStatusBadge(order.status)}
                 <div className="text-sm border-l pl-3 border-gray-200">
                   <p className="text-gray-500 font-medium">
-                    {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-GB", {
-                      day: 'numeric', month: 'short', year: 'numeric'
-                    }) : "N/A"}
+                    {order.createdAt
+                      ? new Date(order.createdAt).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "N/A"}
                   </p>
                 </div>
               </div>
@@ -144,20 +164,32 @@ const MyOrders = () => {
             {/* Items List */}
             <div className="space-y-4">
               {order.items?.map((item, i) => (
-                <div key={i} className="flex flex-col md:flex-row justify-between gap-4 last:border-none">
+                <div
+                  key={i}
+                  className="flex flex-col md:flex-row justify-between gap-4"
+                >
                   <div className="flex gap-4">
                     <img
-                      src={item.product?.image?.[0] || "/placeholder-image.png"} 
+                      src={item.product?.image?.[0] || "/placeholder-image.png"}
                       alt={item.product?.name || "Product"}
                       className="w-20 h-20 rounded-xl border object-cover bg-gray-50"
                     />
                     <div>
-                      <h2 className="font-bold text-gray-900">{item.product?.name || "Unknown Product"}</h2>
+                      <h2 className="font-bold text-gray-900">
+                        {item.product?.name || "Unknown Product"}
+                      </h2>
                       <p className="text-sm text-gray-500">
-                        Quantity: <span className="text-gray-800 font-medium">{item.quantity}</span>
+                        Quantity:{" "}
+                        <span className="text-gray-800 font-medium">
+                          {item.quantity}
+                        </span>
                       </p>
                       <p className="text-sm font-bold text-green-600 mt-1">
-                        {currency} {((item.product?.offerPrice || item.product?.price || 0) * item.quantity).toFixed(2)}
+                        {currency}{" "}
+                        {(
+                          (item.product?.offerPrice || item.product?.price || 0) *
+                          item.quantity
+                        ).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -169,15 +201,25 @@ const MyOrders = () => {
             <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-end md:items-center gap-6">
               <div className="space-y-1">
                 <p className="text-sm text-gray-600">
-                  <span className="font-semibold text-gray-900">Payment:</span> {order.paymentType} ({getPaymentStatus(order.isPaid)})
+                  <span className="font-semibold text-gray-900">Payment:</span>{" "}
+                  {order.paymentType} ({getPaymentStatus(order.isPaid)})
                 </p>
                 <p className="text-sm text-gray-600 font-bold">
-                  Total Amount: <span className="text-lg text-gray-900">{currency}{Number(order.amount || 0).toFixed(2)}</span>
+                  Total Amount:{" "}
+                  <span className="text-lg text-gray-900">
+                    {currency}
+                    {Number(order.amount || 0).toFixed(2)}
+                  </span>
                 </p>
+                {order.address && (
+                  <p className="text-sm text-gray-500">
+                    📍 {order.address.street}, {order.address.city}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-3 w-full md:w-auto">
-                {/* 💡 FIX: Safe reference checking for isAdmin */}
+                {/* ✅ Cancel button - Only show for non-admin users and only if status is 'Order Placed' */}
                 {!isAdmin && order.status === "Order Placed" && (
                   <button
                     onClick={() => cancelOrder(order._id)}
@@ -186,7 +228,7 @@ const MyOrders = () => {
                     Cancel Order
                   </button>
                 )}
-                
+
                 <button
                   onClick={() => navigate(`/delivery-tracking/${order._id}`)}
                   className="flex-1 md:flex-none px-6 py-2.5 bg-black text-white hover:bg-gray-800 rounded-xl text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-gray-200"
@@ -195,6 +237,18 @@ const MyOrders = () => {
                 </button>
               </div>
             </div>
+
+            {/* Delivery Boy Info (if assigned) */}
+            {order.assignedDeliveryBoy && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <p className="text-sm font-semibold text-blue-800">
+                  🚴 Delivery Boy: {order.assignedDeliveryBoy.name}
+                </p>
+                <p className="text-sm text-blue-600">
+                  📞 {order.assignedDeliveryBoy.phone}
+                </p>
+              </div>
+            )}
           </div>
         ))}
       </div>

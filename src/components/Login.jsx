@@ -20,6 +20,7 @@ const Login = () => {
       );
 
       if (data.success) {
+        localStorage.setItem("token", data.token); 
         navigate('/');
         setUser(data.user);
         setShowUserLogin(false);

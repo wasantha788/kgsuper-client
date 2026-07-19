@@ -16,18 +16,16 @@ export const AppContextProvider = ({ children }) => {
   // --- HELPERS ---
   const getUserHeaders = () => {
     const token = localStorage.getItem("token");
-    return token ? { token: token } : {};
+  return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
   const getSellerHeaders = () => {
     const token = localStorage.getItem("sellerToken");
-    return token ? { token: token } : {}; // Backend එකේ req.headers.token කියවන්න ගැළපෙන ලෙස
-  };
+   return token ? { Authorization: `Bearer ${token}` } : {};  };
 
   const getDeliveryHeaders = () => {
     const token = localStorage.getItem("deliveryToken");
-    return token ? { delivery_token: token } : {};
-  };
+  return token ? { Authorization: `Bearer ${token}` } : {};  };
 
   // --- STATE ---
   const [user, setUser] = useState(null);
@@ -182,10 +180,8 @@ const Sellerlogout = async (nav = null, redirect = true) => {
     const syncCart = async () => {
       if (!user?._id || isInitialLoad) return;
       try {
-        await axios.post("/api/cart/update", { 
-          userId: user._id, 
-          cartItems 
-        });
+        await axios.post("/api/cart/update", { userId: user._id, cartItems }, { headers: getUserHeaders() });
+          
       } catch (error) {
         console.error("Sync error:", error);
       }
