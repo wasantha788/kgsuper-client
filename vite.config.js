@@ -21,6 +21,6 @@ export default defineConfig({
   preview: {
     port: 4173,              // default preview port
     host: true,              // allow external access
-    allowedHosts: ['https://kgsuper-client-production.up.railway.app'] // Render domain allow
+    allowedHosts: ['kgsuper-client-production.up.railway.app'] // Render domain allow
   }
 })
